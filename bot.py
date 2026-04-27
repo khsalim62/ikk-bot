@@ -482,8 +482,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 # ===== تشغيل البوت =====
-async def run():
-    """يشغّل البوت والـ web server مع بعض"""
+def main():
     import asyncio
     import signature_server as sig_srv
 
@@ -515,18 +514,22 @@ async def run():
     )
     app.add_handler(conv)
 
-    # شغّل الـ web server
-    await sig_srv.start_server()
-    logger.info("Web server started")
+    # شغّل الـ web server في thread منفصل
+    import threading
+    def start_web():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(sig_srv.start_server())
+        loop.run_forever()
 
-    # شغّل البوت بـ run_polling في thread منفصل
+    web_thread = threading.Thread(target=start_web, daemon=True)
+    web_thread.start()
+    logger.info("Web server thread started")
+
+    # شغّل البوت
     logger.info("Bot started")
     app.run_polling(drop_pending_updates=True)
-
-
-def main():
-    import asyncio
-    asyncio.run(run())
 
 
 if __name__ == "__main__":
