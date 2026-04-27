@@ -330,12 +330,7 @@ def main():
             return web.Response(text="OK")
 
     async def run_all():
-        await ptb_app.initialize()
-        await ptb_app.start()
-        if base_url:
-            webhook_url = f"{base_url}/telegram"
-            await ptb_app.bot.set_webhook(url=webhook_url, drop_pending_updates=True)
-            logger.info(f"Webhook: {webhook_url}")
+        # شغّل الـ web server الأول عشان Railway يشوفه
         web_app = sig_srv.create_app()
         web_app.router.add_post("/telegram", telegram_webhook)
         runner = web.AppRunner(web_app)
@@ -343,6 +338,18 @@ def main():
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
         logger.info(f"Server on port {port}")
+
+        # شغّل البوت
+        await ptb_app.initialize()
+        await ptb_app.start()
+        logger.info("Bot started")
+
+        # سجّل الـ webhook
+        if base_url:
+            webhook_url = f"{base_url}/telegram"
+            await ptb_app.bot.set_webhook(url=webhook_url, drop_pending_updates=True)
+            logger.info(f"Webhook: {webhook_url}")
+
         await asyncio.Event().wait()
 
     asyncio.run(run_all())
