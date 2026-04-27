@@ -197,7 +197,8 @@ async def identify_employee(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await update.message.reply_text(t(context, "not_labor"))
         return IDENTIFY
 
-    context.user_data["emp"] = emp
+    # حفظ بيانات الموظف بشكل آمن (strings فقط)
+    context.user_data["emp"] = {k: str(v) if v is not None else "" for k, v in emp.items()}
     name = get_display_name(emp)
 
     keyboard = [
