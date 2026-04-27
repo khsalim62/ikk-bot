@@ -484,18 +484,19 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # ===== تشغيل البوت =====
 def main():
     import asyncio
-    import signal
     import signature_server as sig_srv
     from aiohttp import web
+    from telegram import Update
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found!")
 
+    base_url = os.getenv("BASE_URL", "")
     port = int(os.getenv("PORT", "8080"))
 
-    app = Application.builder().token(token).build()
-    sig_srv.BOT_APP = app
+    ptb_app = Application.builder().token(token).build()
+    sig_srv.BOT_APP = ptb_app
 
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
@@ -516,29 +517,43 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
     )
-    app.add_handler(conv)
+    ptb_app.add_handler(conv)
+
+    async def telegram_webhook(request):
+        """يستقبل updates من تيليجرام"""
+        try:
+            data = await request.json()
+            update = Update.de_json(data, ptb_app.bot)
+            await ptb_app.process_update(update)
+        except Exception as e:
+            logger.error(f"Webhook error: {e}")
+        return web.Response(text="OK")
 
     async def run_all():
-        # شغّل الـ web server
+        # شغّل الـ PTB app
+        await ptb_app.initialize()
+        await ptb_app.start()
+
+        # سجّل الـ webhook
+        if base_url:
+            webhook_url = f"{base_url}/telegram"
+            await ptb_app.bot.set_webhook(
+                url=webhook_url,
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
+            logger.info(f"Webhook set to {webhook_url}")
+
+        # شغّل الـ aiohttp server
         web_app = sig_srv.create_app()
+        web_app.router.add_post("/telegram", telegram_webhook)
         runner = web.AppRunner(web_app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
-        logger.info(f"Web server started on port {port}")
+        logger.info(f"Server running on port {port}")
 
-        # شغّل البوت
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling(
-            drop_pending_updates=True,
-            allowed_updates=["message", "callback_query"],
-            poll_interval=3.0,
-            bootstrap_retries=5,
-        )
-        logger.info("Bot polling started")
-
-        # استنى
+        # استنى للأبد
         stop = asyncio.Event()
         await stop.wait()
 
