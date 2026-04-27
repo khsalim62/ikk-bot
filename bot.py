@@ -530,7 +530,12 @@ def main():
         # شغّل البوت
         await app.initialize()
         await app.start()
-        await app.updater.start_polling(drop_pending_updates=True)
+        await app.updater.start_polling(
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query"],
+            poll_interval=3.0,
+            bootstrap_retries=5,
+        )
         logger.info("Bot polling started")
 
         # استنى
