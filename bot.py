@@ -489,12 +489,7 @@ async def run():
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
-        raise ValueError("TELEGRAM_BOT_TOKEN غير موجود في البيئة!")
-
-    # إلغاء أي webhook قديم عشان نمنع الـ Conflict
-    import httpx
-    async with httpx.AsyncClient() as client:
-        await client.get(f"https://api.telegram.org/bot{token}/deleteWebhook?drop_pending_updates=true")
+        raise ValueError("TELEGRAM_BOT_TOKEN not found!")
 
     app = Application.builder().token(token).build()
     sig_srv.BOT_APP = app
@@ -520,16 +515,13 @@ async def run():
     )
     app.add_handler(conv)
 
-    # تشغيل الـ web server للتوقيع
+    # شغّل الـ web server
     await sig_srv.start_server()
+    logger.info("Web server started")
 
-    # تشغيل البوت
-    logger.info("البوت والـ web server شغالين...")
-    async with app:
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling()
-        await asyncio.Event().wait()
+    # شغّل البوت بـ run_polling في thread منفصل
+    logger.info("Bot started")
+    app.run_polling(drop_pending_updates=True)
 
 
 def main():
