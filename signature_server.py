@@ -191,7 +191,6 @@ def create_app() -> web.Application:
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
     }))
-    app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/health", health)
     return app
 
