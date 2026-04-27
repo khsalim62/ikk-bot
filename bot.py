@@ -393,14 +393,13 @@ async def confirm_leave(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
     lang = ud.get("lang", "ar")
     sign_msgs = {
-        "ar": f"✍️ *اضغط الرابط أدناه لتوقيع طلبك:*\n\n[📝 افتح صفحة التوقيع]({sig_url})\n\n_افتح الرابط، ارسم توقيعك بإصبعك، ثم اضغط إرسال_",
-        "en": f"✍️ *Tap the link below to sign:*\n\n[📝 Open Signature Page]({sig_url})\n\n_Draw your signature then tap Submit_",
-        "ur": f"✍️ *لنک دبائیں اور دستخط کریں:*\n\n[📝 صفحہ کھولیں]({sig_url})\n\n_دستخط کریں پھر بھیجیں_",
+        "ar": f"✍️ اضغط الرابط أدناه لتوقيع طلبك:\n\n{sig_url}\n\nافتح الرابط، ارسم توقيعك بإصبعك، ثم اضغط إرسال",
+        "en": f"✍️ Tap the link below to sign your request:\n\n{sig_url}\n\nDraw your signature then tap Submit",
+        "ur": f"✍️ نیچے لنک دبائیں:\n\n{sig_url}\n\nدستخط کریں پھر بھیجیں دبائیں",
     }
     await query.edit_message_text(
         sign_msgs.get(lang, sign_msgs["ar"]),
-        parse_mode="Markdown",
-        disable_web_page_preview=True
+        disable_web_page_preview=False
     )
     return SIGNATURE
 
