@@ -483,40 +483,54 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 # ===== تشغيل البوت =====
-def main():
+async def run():
+    """يشغّل البوت والـ web server مع بعض"""
+    import asyncio
+    import signature_server as sig_srv
+
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN غير موجود في البيئة!")
 
     app = Application.builder().token(token).build()
-
-    # ربط الـ bot app بالـ signature server
-    import signature_server
-    signature_server.BOT_APP = app
+    sig_srv.BOT_APP = app
 
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            LANG:         [CallbackQueryHandler(select_language, pattern="^lang_")],
-            IDENTIFY:     [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
-            MAIN_MENU:    [CallbackQueryHandler(main_menu, pattern="^menu_")],
-            LEAVE_TYPE:   [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
-            LEAVE_START:  [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
-            LEAVE_RETURN: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-            LEAVE_DEST:   [CallbackQueryHandler(select_destination, pattern="^dest_")],
+            LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
+            IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
+            MAIN_MENU:       [CallbackQueryHandler(main_menu,         pattern="^menu_")],
+            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
+            LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
+            LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
+            LEAVE_DEST:      [CallbackQueryHandler(select_destination,pattern="^dest_")],
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
             LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
-            LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave, pattern="^confirm_")],
-            SIGNATURE:    [MessageHandler(filters.PHOTO, receive_signature)],
-            TRACK_ID:     [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
+            LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,     pattern="^confirm_")],
+            SIGNATURE:       [MessageHandler(filters.PHOTO, receive_signature)],
+            TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
     )
-
     app.add_handler(conv)
-    logger.info("✅ البوت شغال...")
-    app.run_polling()
+
+    # تشغيل الـ web server للتوقيع
+    await sig_srv.start_server()
+
+    # تشغيل البوت
+    logger.info("البوت والـ web server شغالين...")
+    async with app:
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
+        await asyncio.Event().wait()
+
+
+def main():
+    import asyncio
+    asyncio.run(run())
 
 
 if __name__ == "__main__":
