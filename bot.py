@@ -484,13 +484,14 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # ===== تشغيل البوت =====
 def main():
     import asyncio
+    import signal
     import signature_server as sig_srv
+    from aiohttp import web
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found!")
 
-    base_url = os.getenv("BASE_URL", "")
     port = int(os.getenv("PORT", "8080"))
 
     app = Application.builder().token(token).build()
@@ -517,20 +518,26 @@ def main():
     )
     app.add_handler(conv)
 
-    if base_url:
-        # Webhook mode
-        webhook_url = f"{base_url}/telegram"
-        logger.info(f"Starting webhook on {webhook_url}")
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=port,
-            webhook_url=webhook_url,
-            drop_pending_updates=True,
-        )
-    else:
-        # Polling mode للتطوير المحلي
-        logger.info("Starting polling mode")
-        app.run_polling(drop_pending_updates=True)
+    async def run_all():
+        # شغّل الـ web server
+        web_app = sig_srv.create_app()
+        runner = web.AppRunner(web_app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+        logger.info(f"Web server started on port {port}")
+
+        # شغّل البوت
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling(drop_pending_updates=True)
+        logger.info("Bot polling started")
+
+        # استنى
+        stop = asyncio.Event()
+        await stop.wait()
+
+    asyncio.run(run_all())
 
 
 if __name__ == "__main__":
