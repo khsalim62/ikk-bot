@@ -491,6 +491,11 @@ async def run():
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN غير موجود في البيئة!")
 
+    # إلغاء أي webhook قديم عشان نمنع الـ Conflict
+    import httpx
+    async with httpx.AsyncClient() as client:
+        await client.get(f"https://api.telegram.org/bot{token}/deleteWebhook?drop_pending_updates=true")
+
     app = Application.builder().token(token).build()
     sig_srv.BOT_APP = app
 
