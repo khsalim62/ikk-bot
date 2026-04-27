@@ -363,7 +363,45 @@ async def confirm_leave(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await query.edit_message_text(t(context, "cancel"))
         return ConversationHandler.END
 
-    await query.edit_message_text(t(context, "sign_request"))
+    # توليد رابط التوقيع
+    ud = context.user_data
+    emp = ud.get("emp", {})
+    request_id = generate_request_id()
+    context.user_data["request_id"] = request_id
+
+    from signature_server import create_signature_token, get_signature_url
+    leave_data_tmp = {
+        "leave_type":  ud.get("leave_type", "annual"),
+        "start_date":  ud.get("start_date", ""),
+        "return_date": ud.get("return_date", ""),
+        "destination": ud.get("destination", "inside"),
+        "city_from":   ud.get("city_from", ""),
+        "country_to":  ud.get("country_to", ""),
+        "duration":    ud.get("duration", 0),
+    }
+    token = create_signature_token(
+        chat_id    = query.message.chat_id,
+        emp        = emp,
+        leave_data = leave_data_tmp,
+        request_id = request_id,
+    )
+    sig_url = get_signature_url(
+        token      = token,
+        emp_name   = emp.get("Employee Name Eng", ""),
+        req_id     = request_id,
+        leave_type = ud.get("leave_type", "annual"),
+    )
+    lang = ud.get("lang", "ar")
+    sign_msgs = {
+        "ar": f"✍️ *اضغط الرابط أدناه لتوقيع طلبك:*\n\n[📝 افتح صفحة التوقيع]({sig_url})\n\n_افتح الرابط، ارسم توقيعك بإصبعك، ثم اضغط إرسال_",
+        "en": f"✍️ *Tap the link below to sign:*\n\n[📝 Open Signature Page]({sig_url})\n\n_Draw your signature then tap Submit_",
+        "ur": f"✍️ *لنک دبائیں اور دستخط کریں:*\n\n[📝 صفحہ کھولیں]({sig_url})\n\n_دستخط کریں پھر بھیجیں_",
+    }
+    await query.edit_message_text(
+        sign_msgs.get(lang, sign_msgs["ar"]),
+        parse_mode="Markdown",
+        disable_web_page_preview=True
+    )
     return SIGNATURE
 
 
@@ -451,6 +489,10 @@ def main():
         raise ValueError("TELEGRAM_BOT_TOKEN غير موجود في البيئة!")
 
     app = Application.builder().token(token).build()
+
+    # ربط الـ bot app بالـ signature server
+    import signature_server
+    signature_server.BOT_APP = app
 
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
