@@ -74,17 +74,21 @@ async def receive_signature(request: web.Request) -> web.Response:
         sig_path = SIGNATURES_DIR / f"sig_{token}.png"
         sig_path.write_bytes(sig_bytes)
 
-        # إرسال للبوت عبر queue
-        if BOT_APP:
-            await BOT_APP.update_queue.put({
-                "type":       "signature_received",
-                "token":      token,
-                "sig_path":   str(sig_path),
-                "pending":    pending,
-            })
-
         # مسح الـ token
         del PENDING_SIGNATURES[token]
+
+        # إرسال رسالة تأكيد للموظف في تيليجرام
+        if BOT_APP:
+            chat_id    = pending["chat_id"]
+            request_id = pending["request_id"]
+            emp        = pending["emp"]
+            leave_data = pending["leave_data"]
+
+            # ملء الـ PDF وإرسال الإيميل
+            import asyncio
+            asyncio.create_task(
+                process_signed_request(chat_id, emp, leave_data, request_id, str(sig_path))
+            )
 
         return web.Response(text="OK")
 
@@ -94,6 +98,71 @@ async def receive_signature(request: web.Request) -> web.Response:
 
 async def health(request: web.Request) -> web.Response:
     return web.Response(text="OK")
+
+
+
+async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
+    """يملأ الـ PDF ويبعت الإيميل ويبعت رسالة تأكيد للموظف"""
+    import tempfile
+    from pathlib import Path
+    from pdf_filler import fill_leave_form, fill_declaration_form
+    from email_sender import send_leave_request
+    from tracker import save_request
+
+    try:
+        tmp_dir = Path(tempfile.mkdtemp())
+
+        # ملء فورم الإجازة
+        leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
+        fill_leave_form(emp, leave_data, leave_pdf)
+        pdf_paths = [leave_pdf]
+
+        # فورم الإقرار لو السفر برة المملكة
+        if leave_data.get("destination") == "outside":
+            decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
+            fill_declaration_form(emp, leave_data, decl_pdf)
+            pdf_paths.append(decl_pdf)
+
+        # حفظ الطلب
+        save_request(request_id, emp, leave_data)
+
+        # إرسال الإيميل
+        try:
+            send_leave_request(emp, leave_data, pdf_paths, request_id)
+            email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
+        except Exception as e:
+            email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
+
+        # رسالة تأكيد للموظف في تيليجرام
+        if BOT_APP:
+            msg = (
+                f"✅ *تم تقديم طلبك بنجاح!*
+
+"
+                f"📋 رقم الطلب: `{request_id}`
+"
+                f"👤 {emp.get('Employee Name Eng', '')}
+"
+                f"📅 {leave_data.get('start_date')} ← {leave_data.get('return_date')}
+
+"
+                f"{email_status}
+
+"
+                f"_احتفظ برقم الطلب للمتابعة_"
+            )
+            await BOT_APP.bot.send_message(
+                chat_id=chat_id,
+                text=msg,
+                parse_mode="Markdown"
+            )
+    except Exception as e:
+        print(f"Error processing request {request_id}: {e}")
+        if BOT_APP:
+            await BOT_APP.bot.send_message(
+                chat_id=chat_id,
+                text=f"⚠️ حدث خطأ في معالجة طلبك. تواصل مع HR مع رقم الطلب: {request_id}"
+            )
 
 
 def create_app() -> web.Application:
