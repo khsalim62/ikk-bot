@@ -518,8 +518,7 @@ def main():
     app.add_handler(conv)
 
     if base_url:
-        # Webhook mode — يشتغل مع الـ web server على نفس البورت
-        from telegram.ext import WebhookInfo
+        # Webhook mode
         webhook_url = f"{base_url}/telegram"
         logger.info(f"Starting webhook on {webhook_url}")
         app.run_webhook(
