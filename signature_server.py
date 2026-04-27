@@ -167,10 +167,31 @@ async def telegram_webhook(request: web.Request) -> web.Response:
     return web.Response(text="OK")
 
 
+async def cors_middleware(app, handler):
+    async def middleware(request):
+        if request.method == "OPTIONS":
+            return web.Response(
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                }
+            )
+        response = await handler(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+    return middleware
+
+
 def create_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/sign-page", signature_page)
     app.router.add_post("/sign", receive_signature)
+    app.router.add_options("/sign", lambda r: web.Response(headers={
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }))
     app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/health", health)
     return app
