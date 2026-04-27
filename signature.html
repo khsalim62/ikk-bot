@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>التوقيع الإلكتروني — IKK Group</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 24px 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .logo-text {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a3c5e;
+    letter-spacing: 1px;
+  }
+
+  .logo-sub {
+    font-size: 13px;
+    color: #6b7c93;
+    margin-top: 4px;
+  }
+
+  .divider {
+    height: 1px;
+    background: #e8edf2;
+    margin: 16px 0;
+  }
+
+  .label {
+    font-size: 14px;
+    color: #4a5568;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    background: #fafbfc;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 180px;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .canvas-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #cbd5e0;
+    font-size: 14px;
+    pointer-events: none;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+
+  .canvas-hint.hidden { opacity: 0; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-clear {
+    background: #f0f4f8;
+    color: #4a5568;
+  }
+
+  .btn-submit {
+    background: #1a3c5e;
+    color: white;
+  }
+
+  .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .status {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: center;
+    display: none;
+  }
+
+  .status.success {
+    background: #e6f9f0;
+    color: #1a7a4a;
+    display: block;
+  }
+
+  .status.error {
+    background: #fde8e8;
+    color: #c0392b;
+    display: block;
+  }
+
+  .status.loading {
+    background: #e8f0fe;
+    color: #1a3c5e;
+    display: block;
+  }
+
+  .emp-info {
+    background: #f7f9fc;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #4a5568;
+    line-height: 1.8;
+  }
+
+  .emp-info strong {
+    color: #1a3c5e;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-text">IKK GROUP</div>
+    <div class="logo-sub">نظام إدارة الطلبات</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="emp-info" id="empInfo">
+    جاري تحميل بيانات الطلب...
+  </div>
+
+  <div class="label">✍️ ارسم توقيعك بإصبعك في المربع أدناه:</div>
+
+  <div class="canvas-wrap">
+    <canvas id="sigCanvas"></canvas>
+    <div class="canvas-hint" id="hint">اضغط هنا وارسم توقيعك</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-clear" onclick="clearCanvas()">🗑 مسح</button>
+    <button class="btn btn-submit" id="submitBtn" onclick="submitSignature()" disabled>
+      ✅ إرسال التوقيع
+    </button>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  const canvas = document.getElementById('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+  const submitBtn = document.getElementById('submitBtn');
+  let drawing = false;
+  let hasSig = false;
+
+  // تجهيز الـ canvas بالحجم الصح
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1a3c5e';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+
+  resizeCanvas();
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: src.clientX - rect.left,
+      y: src.clientY - rect.top
+    };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    hint.classList.add('hidden');
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (!hasSig) {
+      hasSig = true;
+      submitBtn.disabled = false;
+    }
+  }
+
+  function endDraw(e) {
+    e.preventDefault();
+    drawing = false;
+  }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', endDraw, { passive: false });
+
+  function clearCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    hasSig = false;
+    submitBtn.disabled = true;
+    hint.classList.remove('hidden');
+  }
+
+  // قراءة الـ token من الـ URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const empName = urlParams.get('name') || '';
+  const reqId = urlParams.get('req') || '';
+  const leaveType = urlParams.get('type') || '';
+
+  // عرض بيانات الطلب
+  const empInfo = document.getElementById('empInfo');
+  if (empName) {
+    const leaveMap = { annual: 'إجازة سنوية', sick: 'إجازة مرضية', unpaid: 'إجازة بدون راتب' };
+    empInfo.innerHTML = `
+      <strong>الموظف:</strong> ${empName}<br>
+      <strong>نوع الإجازة:</strong> ${leaveMap[leaveType] || leaveType}<br>
+      <strong>رقم الطلب:</strong> ${reqId}
+    `;
+  } else {
+    empInfo.style.display = 'none';
+  }
+
+  async function submitSignature() {
+    if (!hasSig) return;
+
+    const statusEl = document.getElementById('status');
+    submitBtn.disabled = true;
+    statusEl.className = 'status loading';
+    statusEl.textContent = '⏳ جاري إرسال التوقيع...';
+
+    // تحويل التوقيع لصورة
+    const imgData = canvas.toDataURL('image/png');
+
+    try {
+      const response = await fetch('/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          signature: imgData
+        })
+      });
+
+      if (response.ok) {
+        statusEl.className = 'status success';
+        statusEl.textContent = '✅ تم إرسال توقيعك بنجاح! يمكنك إغلاق هذه الصفحة.';
+        submitBtn.style.display = 'none';
+        document.querySelector('.btn-clear').style.display = 'none';
+      } else {
+        throw new Error('فشل الإرسال');
+      }
+    } catch (err) {
+      statusEl.className = 'status error';
+      statusEl.textContent = '❌ حدث خطأ. حاول مرة أخرى.';
+      submitBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
