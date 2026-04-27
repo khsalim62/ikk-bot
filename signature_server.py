@@ -153,10 +153,25 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
             )
 
 
+async def telegram_webhook(request: web.Request) -> web.Response:
+    """يستقبل updates من تيليجرام عبر webhook"""
+    if BOT_APP is None:
+        return web.Response(status=503)
+    try:
+        data = await request.json()
+        from telegram import Update
+        update = Update.de_json(data, BOT_APP.bot)
+        await BOT_APP.process_update(update)
+    except Exception as e:
+        print(f"Webhook error: {e}")
+    return web.Response(text="OK")
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/sign-page", signature_page)
     app.router.add_post("/sign", receive_signature)
+    app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/health", health)
     return app
 
