@@ -135,22 +135,10 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
 
         # رسالة تأكيد للموظف في تيليجرام
         if BOT_APP:
-            msg = (
-                f"✅ *تم تقديم طلبك بنجاح!*
-
-"
-                f"📋 رقم الطلب: `{request_id}`
-"
-                f"👤 {emp.get('Employee Name Eng', '')}
-"
-                f"📅 {leave_data.get('start_date')} ← {leave_data.get('return_date')}
-
-"
-                f"{email_status}
-
-"
-                f"_احتفظ برقم الطلب للمتابعة_"
-            )
+            emp_name   = emp.get("Employee Name Eng", "")
+            start_date = leave_data.get("start_date", "")
+            end_date   = leave_data.get("return_date", "")
+            msg = "تم تقديم طلبك بنجاح!\n\nرقم الطلب: " + request_id + "\n" + emp_name + "\n" + start_date + " - " + end_date + "\n\n" + email_status + "\n\nاحتفظ برقم الطلب للمتابعة"
             await BOT_APP.bot.send_message(
                 chat_id=chat_id,
                 text=msg,
