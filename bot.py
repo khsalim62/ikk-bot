@@ -484,53 +484,54 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # ===== تشغيل البوت =====
 def main():
     import asyncio
-    import signal
     import signature_server as sig_srv
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found!")
 
-    async def run_all():
-        app = Application.builder().token(token).build()
-        sig_srv.BOT_APP = app
+    base_url = os.getenv("BASE_URL", "")
+    port = int(os.getenv("PORT", "8080"))
 
-        conv = ConversationHandler(
-            entry_points=[CommandHandler("start", start)],
-            states={
-                LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
-                IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
-                MAIN_MENU:       [CallbackQueryHandler(main_menu,         pattern="^menu_")],
-                LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
-                LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
-                LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-                LEAVE_DEST:      [CallbackQueryHandler(select_destination,pattern="^dest_")],
-                LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
-                LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
-                LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,     pattern="^confirm_")],
-                SIGNATURE:       [MessageHandler(filters.PHOTO, receive_signature)],
-                TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
-            },
-            fallbacks=[CommandHandler("cancel", cancel)],
-            allow_reentry=True,
+    app = Application.builder().token(token).build()
+    sig_srv.BOT_APP = app
+
+    conv = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
+            IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
+            MAIN_MENU:       [CallbackQueryHandler(main_menu,         pattern="^menu_")],
+            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
+            LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
+            LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
+            LEAVE_DEST:      [CallbackQueryHandler(select_destination,pattern="^dest_")],
+            LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
+            LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
+            LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,     pattern="^confirm_")],
+            SIGNATURE:       [MessageHandler(filters.PHOTO, receive_signature)],
+            TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        allow_reentry=True,
+    )
+    app.add_handler(conv)
+
+    if base_url:
+        # Webhook mode — يشتغل مع الـ web server على نفس البورت
+        from telegram.ext import WebhookInfo
+        webhook_url = f"{base_url}/telegram"
+        logger.info(f"Starting webhook on {webhook_url}")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            webhook_url=webhook_url,
+            drop_pending_updates=True,
         )
-        app.add_handler(conv)
-
-        # شغّل الـ web server
-        web_runner = await sig_srv.start_server()
-        logger.info("Web server started on port 8080")
-
-        # شغّل البوت
-        await app.initialize()
-        await app.start()
-        await app.updater.start_polling(drop_pending_updates=True)
-        logger.info("Bot polling started")
-
-        # استنى للأبد
-        stop_event = asyncio.Event()
-        await stop_event.wait()
-
-    asyncio.run(run_all())
+    else:
+        # Polling mode للتطوير المحلي
+        logger.info("Starting polling mode")
+        app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
