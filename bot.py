@@ -484,52 +484,53 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # ===== تشغيل البوت =====
 def main():
     import asyncio
+    import signal
     import signature_server as sig_srv
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found!")
 
-    app = Application.builder().token(token).build()
-    sig_srv.BOT_APP = app
+    async def run_all():
+        app = Application.builder().token(token).build()
+        sig_srv.BOT_APP = app
 
-    conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
-            IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
-            MAIN_MENU:       [CallbackQueryHandler(main_menu,         pattern="^menu_")],
-            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
-            LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
-            LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-            LEAVE_DEST:      [CallbackQueryHandler(select_destination,pattern="^dest_")],
-            LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
-            LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
-            LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,     pattern="^confirm_")],
-            SIGNATURE:       [MessageHandler(filters.PHOTO, receive_signature)],
-            TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-        allow_reentry=True,
-    )
-    app.add_handler(conv)
+        conv = ConversationHandler(
+            entry_points=[CommandHandler("start", start)],
+            states={
+                LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
+                IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
+                MAIN_MENU:       [CallbackQueryHandler(main_menu,         pattern="^menu_")],
+                LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
+                LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
+                LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
+                LEAVE_DEST:      [CallbackQueryHandler(select_destination,pattern="^dest_")],
+                LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
+                LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
+                LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,     pattern="^confirm_")],
+                SIGNATURE:       [MessageHandler(filters.PHOTO, receive_signature)],
+                TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
+            },
+            fallbacks=[CommandHandler("cancel", cancel)],
+            allow_reentry=True,
+        )
+        app.add_handler(conv)
 
-    # شغّل الـ web server في thread منفصل
-    import threading
-    def start_web():
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(sig_srv.start_server())
-        loop.run_forever()
+        # شغّل الـ web server
+        web_runner = await sig_srv.start_server()
+        logger.info("Web server started on port 8080")
 
-    web_thread = threading.Thread(target=start_web, daemon=True)
-    web_thread.start()
-    logger.info("Web server thread started")
+        # شغّل البوت
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling(drop_pending_updates=True)
+        logger.info("Bot polling started")
 
-    # شغّل البوت
-    logger.info("Bot started")
-    app.run_polling(drop_pending_updates=True)
+        # استنى للأبد
+        stop_event = asyncio.Event()
+        await stop_event.wait()
+
+    asyncio.run(run_all())
 
 
 if __name__ == "__main__":
