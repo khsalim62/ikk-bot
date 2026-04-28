@@ -49,8 +49,7 @@ def _set_radio(writer: PdfWriter, field_id: str, value: str):
 def _save(writer: PdfWriter, output_path: Path):
     """حفظ الـ PDF بالطريقة الصحيحة"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(str(output_path), "wb") as f:
-        writer.write(f)
+    writer.write(str(output_path))
 
 
 def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
