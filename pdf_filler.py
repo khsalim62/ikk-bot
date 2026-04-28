@@ -199,6 +199,17 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
         pdf.save(str(output_path))
 
+    # flatten باستخدام pdftk عشان البيانات تظهر في كل الـ viewers
+    import subprocess
+    flat_path = str(output_path) + "_flat.pdf"
+    result = subprocess.run(
+        ["pdftk", str(output_path), "output", flat_path, "flatten"],
+        capture_output=True
+    )
+    if result.returncode == 0:
+        import shutil
+        shutil.move(flat_path, str(output_path))
+
     return output_path
 
 
