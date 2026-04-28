@@ -4,7 +4,6 @@ bot.py — IKK Group HR Bot
 import os
 import logging
 import asyncio
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from aiohttp import web
@@ -154,7 +153,11 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
         [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
     ]
-    await update.message.reply_text(t(ctx, "welcome_emp", name=get_display_name(emp)), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    await update.message.reply_text(
+        t(ctx, "welcome_emp", name=get_display_name(emp)),
+        reply_markup=InlineKeyboardMarkup(kb),
+        parse_mode="Markdown"
+    )
     return MAIN_MENU
 
 async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -163,7 +166,7 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if q.data == "menu_leave":
         kb = [
             [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
-            [InlineKeyboardButton(t(ctx, "leave_sick"), callback_data="leave_sick")],
+            [InlineKeyboardButton(t(ctx, "leave_sick"),   callback_data="leave_sick")],
             [InlineKeyboardButton(t(ctx, "leave_unpaid"), callback_data="leave_unpaid")],
         ]
         await q.edit_message_text(t(ctx, "select_leave_type"), reply_markup=InlineKeyboardMarkup(kb))
@@ -190,15 +193,15 @@ async def leave_start_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def leave_return_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
-        ret = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
+        ret   = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
         start = datetime.strptime(ctx.user_data["start_date"], "%Y-%m-%d").date()
         if ret <= start:
             await update.message.reply_text(t(ctx, "return_before"))
             return LEAVE_RETURN
         ctx.user_data["return_date"] = update.message.text.strip()
-        ctx.user_data["duration"] = (ret - start).days
+        ctx.user_data["duration"]    = (ret - start).days
         kb = [
-            [InlineKeyboardButton(t(ctx, "dest_inside"), callback_data="dest_inside")],
+            [InlineKeyboardButton(t(ctx, "dest_inside"),  callback_data="dest_inside")],
             [InlineKeyboardButton(t(ctx, "dest_outside"), callback_data="dest_outside")],
         ]
         await update.message.reply_text(t(ctx, "select_dest"), reply_markup=InlineKeyboardMarkup(kb))
@@ -226,20 +229,40 @@ async def leave_country(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return await show_confirm_msg(update, ctx)
 
 def build_summary(ctx):
-    ud = ctx.user_data
+    ud  = ctx.user_data
     emp = ud.get("emp", {})
     lmap = {"annual": "سنوية/Annual", "sick": "مرضية/Sick", "unpaid": "بدون راتب/Unpaid"}
     dest = "داخل المملكة" if ud.get("destination") == "inside" else f"خارج المملكة - {ud.get('city_from','')} → {ud.get('country_to','')}"
-    return f"👤 *{emp.get('Employee Name Eng','')}*\n🏖 {lmap.get(ud.get('leave_type',''),'')}\n📅 {ud.get('start_date')} → {ud.get('return_date')}\n⏱ {ud.get('duration')} يوم\n🌍 {dest}"
+    return (
+        f"👤 *{emp.get('Employee Name Eng','')}*\n"
+        f"🏖 {lmap.get(ud.get('leave_type',''),'')}\n"
+        f"📅 {ud.get('start_date')} → {ud.get('return_date')}\n"
+        f"⏱ {ud.get('duration')} يوم\n"
+        f"🌍 {dest}"
+    )
 
 async def show_confirm_cb(q, ctx):
-    kb = [[InlineKeyboardButton(t(ctx,"confirm_yes"),callback_data="confirm_yes"),(InlineKeyboardButton(t(ctx,"confirm_no"),callback_data="confirm_no"))]]
-    await q.edit_message_text(t(ctx,"confirm_title")+build_summary(ctx), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    kb = [[
+        InlineKeyboardButton(t(ctx, "confirm_yes"), callback_data="confirm_yes"),
+        InlineKeyboardButton(t(ctx, "confirm_no"),  callback_data="confirm_no"),
+    ]]
+    await q.edit_message_text(
+        t(ctx, "confirm_title") + build_summary(ctx),
+        reply_markup=InlineKeyboardMarkup(kb),
+        parse_mode="Markdown"
+    )
     return LEAVE_CONFIRM
 
 async def show_confirm_msg(update, ctx):
-    kb = [[(InlineKeyboardButton(t(ctx,"confirm_yes"),callback_data="confirm_yes")),(InlineKeyboardButton(t(ctx,"confirm_no"),callback_data="confirm_no"))]]
-    await update.message.reply_text(t(ctx,"confirm_title")+build_summary(ctx), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    kb = [[
+        InlineKeyboardButton(t(ctx, "confirm_yes"), callback_data="confirm_yes"),
+        InlineKeyboardButton(t(ctx, "confirm_no"),  callback_data="confirm_no"),
+    ]]
+    await update.message.reply_text(
+        t(ctx, "confirm_title") + build_summary(ctx),
+        reply_markup=InlineKeyboardMarkup(kb),
+        parse_mode="Markdown"
+    )
     return LEAVE_CONFIRM
 
 async def confirm_leave(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -248,22 +271,22 @@ async def confirm_leave(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if q.data == "confirm_no":
         await q.edit_message_text(t(ctx, "cancel"))
         return ConversationHandler.END
-    ud = ctx.user_data
+    ud  = ctx.user_data
     emp = ud.get("emp", {})
     request_id = generate_request_id()
     ctx.user_data["request_id"] = request_id
     leave_data = {
-        "leave_type": ud.get("leave_type","annual"),
-        "start_date": ud.get("start_date",""),
-        "return_date": ud.get("return_date",""),
-        "destination": ud.get("destination","inside"),
-        "city_from": ud.get("city_from",""),
-        "country_to": ud.get("country_to",""),
-        "duration": ud.get("duration",0),
+        "leave_type":  ud.get("leave_type", "annual"),
+        "start_date":  ud.get("start_date", ""),
+        "return_date": ud.get("return_date", ""),
+        "destination": ud.get("destination", "inside"),
+        "city_from":   ud.get("city_from", ""),
+        "country_to":  ud.get("country_to", ""),
+        "duration":    ud.get("duration", 0),
     }
-    token = sig_srv.create_signature_token(q.message.chat_id, emp, leave_data, request_id)
-    sig_url = sig_srv.get_signature_url(token, emp.get("Employee Name Eng",""), request_id, ud.get("leave_type","annual"))
-    lang = ud.get("lang","ar")
+    token   = sig_srv.create_signature_token(q.message.chat_id, emp, leave_data, request_id)
+    sig_url = sig_srv.get_signature_url(token, emp.get("Employee Name Eng", ""), request_id, ud.get("leave_type", "annual"))
+    lang    = ud.get("lang", "ar")
     msgs = {
         "ar": f"✍️ اضغط الرابط لتوقيع طلبك:\n\n{sig_url}\n\nارسم توقيعك بإصبعك ثم اضغط إرسال",
         "en": f"✍️ Tap to sign:\n\n{sig_url}\n\nDraw your signature then tap Submit",
@@ -288,12 +311,13 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(t(ctx, "cancel"))
     return ConversationHandler.END
 
+
 def main():
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token    = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_BOT_TOKEN not found!")
     base_url = os.getenv("BASE_URL", "")
-    port = int(os.getenv("PORT", "8080"))
+    port     = int(os.getenv("PORT", "8080"))
 
     ptb_app = Application.builder().token(token).build()
     sig_srv.BOT_APP = ptb_app
@@ -301,50 +325,39 @@ def main():
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            LANG: [CallbackQueryHandler(select_language, pattern="^lang_")],
-            IDENTIFY: [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
-            MAIN_MENU: [CallbackQueryHandler(main_menu, pattern="^menu_")],
-            LEAVE_TYPE: [CallbackQueryHandler(select_leave_type, pattern="^leave_")],
-            LEAVE_START: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
-            LEAVE_RETURN: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-            LEAVE_DEST: [CallbackQueryHandler(select_destination, pattern="^dest_")],
+            LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
+            IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
+            MAIN_MENU:       [CallbackQueryHandler(main_menu,          pattern="^menu_")],
+            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type,  pattern="^leave_")],
+            LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
+            LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
+            LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_")],
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
-            LEAVE_COUNTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
-            LEAVE_CONFIRM: [CallbackQueryHandler(confirm_leave, pattern="^confirm_")],
-            SIGNATURE: [MessageHandler(filters.PHOTO, receive_signature)],
-            TRACK_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
+            LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
+            LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
+            SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
+            TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
     )
     ptb_app.add_handler(conv)
 
-    async def telegram_webhook(request):
-        try:
-            data = await request.json()
-            update = Update.de_json(data, ptb_app.bot)
-            await ptb_app.process_update(update)
-            return web.Response(text="OK")
-        except Exception as e:
-            logger.error(f"Webhook error: {e}")
-            return web.Response(text="OK")
-
     async def run_all():
-        # ✅ إنشاء السيرفر أولاً — Railway لازم يشوفه فوراً
+        # ✅ السيرفر يشتغل أولاً
         web_app = sig_srv.create_app()
-
-        runner = web.AppRunner(web_app)
+        runner  = web.AppRunner(web_app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
         logger.info(f"✅ Server running on port {port}")
 
-        # ✅ تهيئة البوت بعد السيرفر
+        # ✅ البوت يشتغل بعد السيرفر
         await ptb_app.initialize()
         await ptb_app.start()
         logger.info("✅ Bot started")
 
-        # ✅ تسجيل الـ webhook بعد كل شيء
+        # ✅ تسجيل الـ webhook
         if base_url:
             webhook_url = f"{base_url}/telegram"
             try:
@@ -353,7 +366,6 @@ def main():
             except Exception as e:
                 logger.error(f"❌ Webhook error: {e}")
 
-        # ✅ إبقاء السيرفر شغال
         try:
             await asyncio.Event().wait()
         finally:
@@ -362,6 +374,7 @@ def main():
             await runner.cleanup()
 
     asyncio.run(run_all())
+
 
 if __name__ == "__main__":
     main()
