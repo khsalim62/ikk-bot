@@ -171,20 +171,20 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
     reader = PdfReader(str(DECL_FORM))
     writer = PdfWriter()
-    writer.clone_reader_document_root(reader)
+    writer.append(reader)
 
-    writer.update_page_form_field_values(
-        writer.pages[0],
-        {
-            "No":          emp_name,
-            "Text2":       emp_name,
-            "Text1":       emp_id,
-            "Text3":       emp_id,
-            "undefined":   emp_name,
-            "undefined_3": emp_name,
-            "undefined_4": today,
-        }
-    )
+    fields = {
+        "No":          emp_name,
+        "Text2":       emp_name,
+        "Text1":       emp_id,
+        "Text3":       emp_id,
+        "undefined":   emp_name,
+        "undefined_3": emp_name,
+        "undefined_4": today,
+    }
+
+    for page in writer.pages:
+        writer.update_page_form_field_values(page, fields)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(str(output_path), "wb") as f:
