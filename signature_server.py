@@ -61,8 +61,8 @@ async def receive_signature(request: web.Request) -> web.Response:
     """يستقبل التوقيع من الصفحة ويبعته للبوت"""
     try:
         data = await request.json()
-        token     = data.get("token", "")
-        sig_b64   = data.get("signature", "")
+        token   = data.get("token", "")
+        sig_b64 = data.get("signature", "")
 
         pending = PENDING_SIGNATURES.get(token)
         if not pending:
@@ -77,15 +77,13 @@ async def receive_signature(request: web.Request) -> web.Response:
         # مسح الـ token
         del PENDING_SIGNATURES[token]
 
-        # إرسال رسالة تأكيد للموظف في تيليجرام
+        # ملء الـ PDF وإرسال الإيميل
         if BOT_APP:
             chat_id    = pending["chat_id"]
             request_id = pending["request_id"]
             emp        = pending["emp"]
             leave_data = pending["leave_data"]
 
-            # ملء الـ PDF وإرسال الإيميل
-            import asyncio
             asyncio.create_task(
                 process_signed_request(chat_id, emp, leave_data, request_id, str(sig_path))
             )
@@ -98,7 +96,6 @@ async def receive_signature(request: web.Request) -> web.Response:
 
 async def health(request: web.Request) -> web.Response:
     return web.Response(text="OK")
-
 
 
 async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
@@ -138,11 +135,17 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
             emp_name   = emp.get("Employee Name Eng", "")
             start_date = leave_data.get("start_date", "")
             end_date   = leave_data.get("return_date", "")
-            msg = "تم تقديم طلبك بنجاح!\n\nرقم الطلب: " + request_id + "\n" + emp_name + "\n" + start_date + " - " + end_date + "\n\n" + email_status + "\n\nاحتفظ برقم الطلب للمتابعة"
+            msg = (
+                "تم تقديم طلبك بنجاح!\n\n"
+                f"رقم الطلب: {request_id}\n"
+                f"{emp_name}\n"
+                f"{start_date} - {end_date}\n\n"
+                f"{email_status}\n\n"
+                "احتفظ برقم الطلب للمتابعة"
+            )
             await BOT_APP.bot.send_message(
                 chat_id=chat_id,
                 text=msg,
-                parse_mode="Markdown"
             )
     except Exception as e:
         print(f"Error processing request {request_id}: {e}")
@@ -192,6 +195,8 @@ def create_app() -> web.Application:
         "Access-Control-Allow-Headers": "Content-Type",
     }))
     app.router.add_get("/health", health)
+    # ✅ الـ telegram webhook مسجل هنا مباشرة
+    app.router.add_post("/telegram", telegram_webhook)
     return app
 
 
