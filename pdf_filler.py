@@ -144,7 +144,7 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
         "ID Number":        str(emp.get("Employee Code", "")),
         "emp nationality":  str(emp.get("Nationality E", "")),
         "company & Region": get_company_region(emp),
-        "Contact Numbers":  str(emp.get("Mobile", "")),
+        "Contact Numbers":  str(leave_data.get("phone", emp.get("Mobile", ""))),
         "leave start date": leave_data.get("start_date", ""),
         "leave return date":leave_data.get("return_date", ""),
         "Duration":         str(leave_data.get("duration", "")),
