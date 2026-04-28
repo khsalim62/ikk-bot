@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, SIGNATURE, TRACK_ID = range(13)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID = range(14)
 
 EMPLOYEES = {}
 def get_employees():
@@ -57,6 +57,16 @@ TEXTS = {
         "confirm_yes": "✅ تأكيد",
         "confirm_no": "❌ إلغاء",
         "cancel": "تم الإلغاء. اكتب /start للبدء.",
+        "decl_text": "📄 *نموذج إقرار — سفر خارج المملكة*
+
+أنا الموقع أدناه أقر وأتعهد بأنه في حالة حدوث أي تأخير في عودتي من إجازتي بسبب وضع الحرب الحالي أو أي ظروف متعلقة بذلك، فإنني سأكون مسؤولاً بالكامل عن أي مصاريف تتحملها الشركة نيابة عني.
+
+وقد تشمل هذه المصاريف، على سبيل المثال لا الحصر، تمديد تأشيرة الخروج والعودة، أو إعادة إصدار أو تغيير تذكرة الطيران، أو تجديد الإقامة، أو أي تكاليف إدارية أخرى ذات صلة ناتجة عن التأخير.
+
+بموجب هذا، أفوض وأوافق على أن تقوم الشركة بخصم كامل مبلغ هذه المصاريف من راتبي أو أي مستحقات أخرى واجبة الدفع لي، وذلك وفقاً لسياسات الشركة والأنظمة المعمول بها.
+
+تم تقديم هذا الإقرار طواعية وبفهم كامل للشروط والأحكام المذكورة أعلاه.",
+        "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
@@ -86,6 +96,16 @@ TEXTS = {
         "confirm_yes": "✅ Confirm",
         "confirm_no": "❌ Cancel",
         "cancel": "Cancelled. Type /start to begin.",
+        "decl_text": "📄 *Declaration Form — Travel Outside KSA*
+
+I hereby declare and undertake that in the event of any delay in my return from vacation travel due to the current war situation or any related circumstances, I shall be fully responsible for any expenses incurred by the Company on my behalf.
+
+Such expenses may include, but are not limited to, extension of Exit/Re-Entry (ERE) visa, reissuance or change of air ticket, renewal of Iqama, or any other related administrative costs resulting from the delay.
+
+I hereby authorize and consent that the Company may deduct the full amount of such expenses from my salary or any other dues payable to me, in accordance with the Company's policies and applicable regulations.
+
+This declaration is made voluntarily and with full understanding of the above terms and conditions.",
+        "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
@@ -115,6 +135,16 @@ TEXTS = {
         "confirm_yes": "✅ تصدیق",
         "confirm_no": "❌ منسوخ",
         "cancel": "منسوخ۔ /start لکھیں۔",
+        "decl_text": "📄 *اقرارنامہ — سعودی عرب سے باہر سفر*
+
+میں اعلان کرتا ہوں اور عہد کرتا ہوں کہ موجودہ جنگی صورتحال یا اس سے متعلق کسی بھی حالات کی وجہ سے چھٹی سے واپسی میں کسی بھی تاخیر کی صورت میں، میں کمپنی کی جانب سے میری طرف سے اٹھائے گئے تمام اخراجات کا مکمل ذمہ دار ہوں گا۔
+
+ان اخراجات میں شامل ہو سکتے ہیں: ERE ویزا کی توسیع، ہوائی ٹکٹ کی دوبارہ اجراء یا تبدیلی، اقامہ کی تجدید، یا تاخیر کے نتیجے میں پیدا ہونے والے کوئی دیگر متعلقہ انتظامی اخراجات۔
+
+میں بموجب ہذا کمپنی کو اختیار دیتا اور رضامندی دیتا ہوں کہ وہ ان تمام اخراجات کی مکمل رقم میری تنخواہ یا مجھے واجب الادا کسی بھی دیگر مستحقات سے کمپنی کی پالیسیوں اور نافذ ضوابط کے مطابق کاٹ سکے۔
+
+یہ اقرار رضاکارانہ طور پر اور اوپر درج شرائط و احکام کی مکمل سمجھ کے ساتھ پیش کیا گیا ہے۔",
+        "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
@@ -230,12 +260,28 @@ async def leave_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def leave_country(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["country_to"] = update.message.text.strip()
-    await update.message.reply_text(t(ctx, "enter_phone"))
-    return LEAVE_PHONE
+    return await show_declaration(update, ctx, is_callback=False)
 
 async def leave_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["phone"] = update.message.text.strip()
     return await show_confirm_msg(update, ctx)
+
+async def show_declaration(update_or_q, ctx, is_callback=False):
+    """يعرض نص الإقرار للموظف مع زرار الموافقة"""
+    kb = [[InlineKeyboardButton(t(ctx, "decl_confirm"), callback_data="decl_agree")]]
+    text = t(ctx, "decl_text")
+    if is_callback:
+        await update_or_q.edit_message_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    else:
+        await update_or_q.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+    return LEAVE_DECLARATION
+
+async def declaration_agreed(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """الموظف وافق على الإقرار"""
+    q = update.callback_query
+    await q.answer()
+    await q.edit_message_text(t(ctx, "enter_phone"))
+    return LEAVE_PHONE
 
 def build_summary(ctx):
     ud  = ctx.user_data
@@ -345,6 +391,7 @@ def main():
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
             LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
             LEAVE_PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_phone)],
+            LEAVE_DECLARATION: [CallbackQueryHandler(declaration_agreed, pattern="^decl_agree$")],
             LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
