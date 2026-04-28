@@ -120,8 +120,11 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
         pdf_paths = [leave_pdf]
 
         if leave_data.get("destination") == "outside":
+            decl_pdf_filled = tmp_dir / f"declaration_filled_{request_id}.pdf"
+            fill_declaration_form(emp, leave_data, decl_pdf_filled)
+            # إضافة التوقيع على فورم الإقرار في موضع Signature4
             decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
-            fill_declaration_form(emp, leave_data, decl_pdf)
+            add_signature_to_pdf(decl_pdf_filled, Path(sig_path), decl_pdf, field_id="Signature4")
             pdf_paths.append(decl_pdf)
 
         save_request(request_id, emp, leave_data)
