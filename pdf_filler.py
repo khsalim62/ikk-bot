@@ -1,10 +1,10 @@
 """
 pdf_filler.py — ملء فورم الإجازة وفورم الإقرار تلقائياً
-يستخدم pikepdf للتعامل مع الـ PDF forms
 """
 from pathlib import Path
 from datetime import date
 import pikepdf
+from pikepdf import Pdf, Dictionary, Name, String, Array
 
 FORMS_DIR  = Path(__file__).parent / "Forms"
 LEAVE_FORM = FORMS_DIR / "Leave_form_fillable.pdf"
@@ -23,11 +23,9 @@ DESTINATION_MAP = {
 
 
 def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
-    """يملأ الـ PDF fields ويحفظه"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with pikepdf.open(str(template_path), allow_overwriting_input=False) as pdf:
-        # نفتح الـ AcroForm
+    with Pdf.open(str(template_path)) as pdf:
         if "/AcroForm" not in pdf.Root:
             pdf.save(str(output_path))
             return
@@ -37,42 +35,34 @@ def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
             pdf.save(str(output_path))
             return
 
-        # ✅ يجبر الـ PDF viewer يعرض القيم بشكل صح
-        acroform["/NeedAppearances"] = pikepdf.Boolean(True)
+        # ✅ NeedAppearances الصح في pikepdf
+        acroform[Name("/NeedAppearances")] = pikepdf.objects.PdfObject.parse("true") if hasattr(pikepdf.objects.PdfObject, 'parse') else Name("/true")
 
         def process_field(field):
-            """معالجة كل حقل بشكل recursive"""
-            # لو فيه kids، نعالجهم
             if "/Kids" in field:
                 for kid in field.Kids:
                     process_field(kid)
                 return
 
             field_name = str(field.get("/T", "")).strip()
-            if not field_name:
-                return
-
-            if field_name not in fields:
+            if not field_name or field_name not in fields:
                 return
 
             value = fields[field_name]
             field_type = str(field.get("/FT", "")).strip()
 
             if field_type == "/Tx":
-                # حقل نصي
-                field["/V"] = pikepdf.String(str(value))
+                field[Name("/V")] = String(str(value))
                 if "/AP" in field:
-                    del field["/AP"]
+                    del field[Name("/AP")]
 
             elif field_type == "/Btn":
-                # Radio button أو Checkbox
-                choice = pikepdf.Name("/" + str(value))
-                field["/V"] = choice
-                field["/AS"] = choice
+                choice = Name("/" + str(value))
+                field[Name("/V")] = choice
+                field[Name("/AS")] = choice
 
         for field_ref in acroform.Fields:
-            field = field_ref
-            process_field(field)
+            process_field(field_ref)
 
         pdf.save(str(output_path))
 
@@ -83,7 +73,6 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
     dest = leave_data.get("destination", "inside")
     city_from  = leave_data.get("city_from", "")
     country_to = leave_data.get("country_to", "")
-    specify    = f"{city_from} → {country_to}" if city_from else country_to
 
     fields = {
         "Emp name":         str(emp.get("Employee Name Eng", "")),
@@ -102,7 +91,7 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
     }
 
     if dest == "outside":
-        fields["Specify"] = specify
+        fields["Specify"] = f"{city_from} -> {country_to}" if city_from else country_to
 
     _fill_pdf(LEAVE_FORM, fields, output_path)
     return output_path
@@ -129,20 +118,16 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
 def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
                           field_id: str = "Signature4") -> Path:
-    """يضيف التوقيع على الـ PDF"""
     import shutil
-    # في الوقت الحالي نحفظ الـ PDF كما هو مع التوقيع كصورة منفصلة
-    # يمكن تطوير هذا لاحقاً لدمج الصورة في الـ PDF
     shutil.copy(str(pdf_path), str(output_path))
     return output_path
 
 
 def merge_pdfs(pdf_paths: list[Path], output_path: Path) -> Path:
-    """يدمج قائمة PDF في ملف واحد"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf = pikepdf.Pdf.new()
+    pdf = Pdf.new()
     for p in pdf_paths:
-        src = pikepdf.open(str(p))
+        src = Pdf.open(str(p))
         pdf.pages.extend(src.pages)
     pdf.save(str(output_path))
     return output_path
