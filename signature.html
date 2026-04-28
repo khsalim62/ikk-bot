@@ -1,179 +1,328 @@
-"""
-signature_server.py — سيرفر صغير يعرض صفحة التوقيع ويستقبله
-يشتغل جنب البوت على نفس السيرفر
-"""
-import os
-import base64
-import asyncio
-import uuid
-from pathlib import Path
-from aiohttp import web
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>التوقيع الإلكتروني — IKK Group</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
 
-SIGNATURES_DIR = Path(__file__).parent / "signatures"
-SIGNATURES_DIR.mkdir(exist_ok=True)
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
 
-PENDING_SIGNATURES: dict = {}
-BOT_APP = None
+  .card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 24px 20px;
+    width: 100%;
+    max-width: 420px;
+  }
 
+  .logo {
+    text-align: center;
+    margin-bottom: 20px;
+  }
 
-def get_base_url() -> str:
-    return os.getenv("BASE_URL", "http://localhost:8080")
+  .logo-text {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a3c5e;
+    letter-spacing: 1px;
+  }
 
+  .logo-sub {
+    font-size: 13px;
+    color: #6b7c93;
+    margin-top: 4px;
+  }
 
-def create_signature_token(chat_id: int, emp: dict, leave_data: dict, request_id: str) -> str:
-    token = str(uuid.uuid4()).replace("-", "")[:16]
-    PENDING_SIGNATURES[token] = {
-        "chat_id":    chat_id,
-        "emp":        emp,
-        "leave_data": leave_data,
-        "request_id": request_id,
+  .divider {
+    height: 1px;
+    background: #e8edf2;
+    margin: 16px 0;
+  }
+
+  .label {
+    font-size: 14px;
+    color: #4a5568;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    background: #fafbfc;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 180px;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .canvas-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #cbd5e0;
+    font-size: 14px;
+    pointer-events: none;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+
+  .canvas-hint.hidden { opacity: 0; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-clear {
+    background: #f0f4f8;
+    color: #4a5568;
+  }
+
+  .btn-submit {
+    background: #1a3c5e;
+    color: white;
+  }
+
+  .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .status {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: center;
+    display: none;
+  }
+
+  .status.success {
+    background: #e6f9f0;
+    color: #1a7a4a;
+    display: block;
+  }
+
+  .status.error {
+    background: #fde8e8;
+    color: #c0392b;
+    display: block;
+  }
+
+  .status.loading {
+    background: #e8f0fe;
+    color: #1a3c5e;
+    display: block;
+  }
+
+  .emp-info {
+    background: #f7f9fc;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #4a5568;
+    line-height: 1.8;
+  }
+
+  .emp-info strong {
+    color: #1a3c5e;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-text">IKK GROUP</div>
+    <div class="logo-sub">نظام إدارة الطلبات</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="emp-info" id="empInfo">
+    جاري تحميل بيانات الطلب...
+  </div>
+
+  <div class="label">✍️ ارسم توقيعك بإصبعك في المربع أدناه:</div>
+
+  <div class="canvas-wrap">
+    <canvas id="sigCanvas"></canvas>
+    <div class="canvas-hint" id="hint">اضغط هنا وارسم توقيعك</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-clear" onclick="clearCanvas()">🗑 مسح</button>
+    <button class="btn btn-submit" id="submitBtn" onclick="submitSignature()" disabled>
+      ✅ إرسال التوقيع
+    </button>
+  </div>
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  const canvas = document.getElementById('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+  const submitBtn = document.getElementById('submitBtn');
+  let drawing = false;
+  let hasSig = false;
+
+  // تجهيز الـ canvas بالحجم الصح
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1a3c5e';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+
+  resizeCanvas();
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: src.clientX - rect.left,
+      y: src.clientY - rect.top
+    };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    hint.classList.add('hidden');
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (!hasSig) {
+      hasSig = true;
+      submitBtn.disabled = false;
     }
-    return token
+  }
 
+  function endDraw(e) {
+    e.preventDefault();
+    drawing = false;
+  }
 
-def get_signature_url(token: str, emp_name: str, req_id: str, leave_type: str) -> str:
-    base = get_base_url()
-    return (
-        f"{base}/sign-page"
-        f"?token={token}"
-        f"&name={emp_name.replace(' ', '+')}"
-        f"&req={req_id}"
-        f"&type={leave_type}"
-    )
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', draw, { passive: false });
+  canvas.addEventListener('touchend', endDraw, { passive: false });
 
+  function clearCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    hasSig = false;
+    submitBtn.disabled = true;
+    hint.classList.remove('hidden');
+  }
 
-async def signature_page(request: web.Request) -> web.Response:
-    html_path = Path(__file__).parent / "signature.html"
-    html = html_path.read_text(encoding="utf-8")
-    return web.Response(text=html, content_type="text/html")
+  // قراءة الـ token من الـ URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const empName = urlParams.get('name') || '';
+  const reqId = urlParams.get('req') || '';
+  const leaveType = urlParams.get('type') || '';
 
+  // عرض بيانات الطلب
+  const empInfo = document.getElementById('empInfo');
+  if (empName) {
+    const leaveMap = { annual: 'إجازة سنوية', sick: 'إجازة مرضية', unpaid: 'إجازة بدون راتب' };
+    empInfo.innerHTML = `
+      <strong>الموظف:</strong> ${empName}<br>
+      <strong>نوع الإجازة:</strong> ${leaveMap[leaveType] || leaveType}<br>
+      <strong>رقم الطلب:</strong> ${reqId}
+    `;
+  } else {
+    empInfo.style.display = 'none';
+  }
 
-async def receive_signature(request: web.Request) -> web.Response:
-    try:
-        data    = await request.json()
-        token   = data.get("token", "")
-        sig_b64 = data.get("signature", "")
+  async function submitSignature() {
+    if (!hasSig) return;
 
-        pending = PENDING_SIGNATURES.get(token)
-        if not pending:
-            return web.Response(status=404, text="Token not found")
+    const statusEl = document.getElementById('status');
+    submitBtn.disabled = true;
+    statusEl.className = 'status loading';
+    statusEl.textContent = '⏳ جاري إرسال التوقيع...';
 
-        sig_data  = sig_b64.split(",")[1] if "," in sig_b64 else sig_b64
-        sig_bytes = base64.b64decode(sig_data)
-        sig_path  = SIGNATURES_DIR / f"sig_{token}.png"
-        sig_path.write_bytes(sig_bytes)
+    // تحويل التوقيع لصورة
+    const imgData = canvas.toDataURL('image/png');
 
-        del PENDING_SIGNATURES[token]
-
-        if BOT_APP:
-            asyncio.create_task(
-                process_signed_request(
-                    pending["chat_id"],
-                    pending["emp"],
-                    pending["leave_data"],
-                    pending["request_id"],
-                    str(sig_path)
-                )
-            )
-
-        return web.Response(text="OK")
-
-    except Exception as e:
-        return web.Response(status=500, text=str(e))
-
-
-async def health(request: web.Request) -> web.Response:
-    return web.Response(text="OK")
-
-
-async def telegram_webhook(request: web.Request) -> web.Response:
-    """يستقبل updates من تيليجرام عبر webhook"""
-    if BOT_APP is None:
-        return web.Response(status=503, text="Bot not ready")
-    try:
-        data   = await request.json()
-        from telegram import Update
-        update = Update.de_json(data, BOT_APP.bot)
-        await BOT_APP.process_update(update)
-    except Exception as e:
-        print(f"Webhook error: {e}")
-    return web.Response(text="OK")
-
-
-async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
-    import tempfile
-    from pdf_filler import fill_leave_form, fill_declaration_form, add_signature_to_pdf
-    from email_sender import send_leave_request
-    from tracker import save_request
-
-    try:
-        tmp_dir   = Path(tempfile.mkdtemp())
-        from pdf_filler import add_signature_to_pdf
-
-        # ملء فورم الإجازة
-        leave_pdf_filled = tmp_dir / f"leave_filled_{request_id}.pdf"
-        fill_leave_form(emp, leave_data, leave_pdf_filled)
-
-        # إضافة التوقيع
-        leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
-        add_signature_to_pdf(leave_pdf_filled, Path(sig_path), leave_pdf)
-        pdf_paths = [leave_pdf]
-
-        if leave_data.get("destination") == "outside":
-            decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
-            fill_declaration_form(emp, leave_data, decl_pdf)
-            pdf_paths.append(decl_pdf)
-
-        save_request(request_id, emp, leave_data)
-
-        try:
-            send_leave_request(emp, leave_data, pdf_paths, request_id)
-            email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
-        except Exception:
-            email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
-
-        if BOT_APP:
-            msg = (
-                "تم تقديم طلبك بنجاح!\n\n"
-                f"رقم الطلب: {request_id}\n"
-                f"{emp.get('Employee Name Eng', '')}\n"
-                f"{leave_data.get('start_date', '')} - {leave_data.get('return_date', '')}\n\n"
-                f"{email_status}\n\n"
-                "احتفظ برقم الطلب للمتابعة"
-            )
-            await BOT_APP.bot.send_message(chat_id=chat_id, text=msg)
-
-    except Exception as e:
-        print(f"Error processing request {request_id}: {e}")
-        if BOT_APP:
-            await BOT_APP.bot.send_message(
-                chat_id=chat_id,
-                text=f"⚠️ حدث خطأ. تواصل مع HR برقم الطلب: {request_id}"
-            )
-
-
-@web.middleware
-async def cors_middleware(request, handler):
-    if request.method == "OPTIONS":
-        return web.Response(headers={
-            "Access-Control-Allow-Origin":  "*",
-            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+    try {
+      const response = await fetch('/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          signature: imgData
         })
-    response = await handler(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
+      });
 
-
-def create_app() -> web.Application:
-    app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get("/sign-page", signature_page)
-    app.router.add_post("/sign",     receive_signature)
-    app.router.add_options("/sign",  lambda r: web.Response(headers={
-        "Access-Control-Allow-Origin":  "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    }))
-    app.router.add_get("/health",       health)
-    app.router.add_post("/telegram",    telegram_webhook)
-    return app
+      if (response.ok) {
+        statusEl.className = 'status success';
+        statusEl.textContent = '✅ تم إرسال توقيعك بنجاح! يمكنك إغلاق هذه الصفحة.';
+        submitBtn.style.display = 'none';
+        document.querySelector('.btn-clear').style.display = 'none';
+      } else {
+        throw new Error('فشل الإرسال');
+      }
+    } catch (err) {
+      statusEl.className = 'status error';
+      statusEl.textContent = '❌ حدث خطأ. حاول مرة أخرى.';
+      submitBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
