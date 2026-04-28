@@ -57,7 +57,7 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
 
     reader = PdfReader(str(LEAVE_FORM))
     writer = PdfWriter()
-    writer.append(reader)
+    writer.clone_reader_document_root(reader)
 
     _set_text_field(writer, "Emp name",         str(emp.get("Employee Name Eng", "")))
     _set_text_field(writer, "emp position",     str(emp.get("Postition E", "")))
@@ -95,7 +95,7 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
     reader = PdfReader(str(DECL_FORM))
     writer = PdfWriter()
-    writer.append(reader)
+    writer.clone_reader_document_root(reader)
 
     _set_text_field(writer, "No",          emp_name)
     _set_text_field(writer, "Text2",       emp_name)
