@@ -1,148 +1,93 @@
 """
-pdf_filler.py — ملء فورم الإجازة وفورم الإقرار تلقائياً
-يستخدم pikepdf للتعامل مع الـ PDF forms
+email_sender.py — إرسال إيميل لـ HR مع الـ PDF المرفق عبر SendGrid
 """
+import os
+import base64
 from pathlib import Path
-from datetime import date
-import pikepdf
+from datetime import datetime
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (
+    Mail, To, Cc, Attachment, FileContent, FileName,
+    FileType, Disposition
+)
 
-FORMS_DIR  = Path(__file__).parent / "Forms"
-LEAVE_FORM = FORMS_DIR / "Leave_form_fillable.pdf"
-DECL_FORM  = FORMS_DIR / "Declaration_Form_.pdf"
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
+HR_EMAIL         = os.getenv("HR_EMAIL", "")
 
-LEAVE_TYPE_MAP = {
-    "annual": "Choice1",
-    "unpaid": "Choice2",
-    "sick":   "Choice3",
-}
-
-DESTINATION_MAP = {
-    "inside":  "Choice1",
-    "outside": "Choice2",
-}
-
-
-def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
-    """يملأ الـ PDF fields ويحفظه"""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with pikepdf.open(str(template_path), allow_overwriting_input=False) as pdf:
-        # نفتح الـ AcroForm
-        if "/AcroForm" not in pdf.Root:
-            pdf.save(str(output_path))
-            return
-
-        acroform = pdf.Root.AcroForm
-        if "/Fields" not in acroform:
-            pdf.save(str(output_path))
-            return
-
-        # ✅ يجبر الـ PDF viewer يعرض القيم بشكل صح
-        acroform["/NeedAppearances"] = pikepdf.Boolean(True)
-
-        def process_field(field):
-            """معالجة كل حقل بشكل recursive"""
-            # لو فيه kids، نعالجهم
-            if "/Kids" in field:
-                for kid in field.Kids:
-                    process_field(kid)
-                return
-
-            field_name = str(field.get("/T", "")).strip()
-            if not field_name:
-                return
-
-            if field_name not in fields:
-                return
-
-            value = fields[field_name]
-            field_type = str(field.get("/FT", "")).strip()
-
-            if field_type == "/Tx":
-                # حقل نصي
-                field["/V"] = pikepdf.String(str(value))
-                if "/AP" in field:
-                    del field["/AP"]
-
-            elif field_type == "/Btn":
-                # Radio button أو Checkbox
-                choice = pikepdf.Name("/" + str(value))
-                field["/V"] = choice
-                field["/AS"] = choice
-
-        for field_ref in acroform.Fields:
-            field = field_ref
-            process_field(field)
-
-        pdf.save(str(output_path))
+CC_EMAILS = [
+    "syed.moin@ikkgroup.com",
+    "Amr.Hegazy@ikkgroup.com",
+    "Khaled.Salim@ikkgroup.com",
+]
 
 
-def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
-    from employees import get_company_region
+def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], request_id: str):
+    emp_name = emp.get("Employee Name Eng", "")
+    emp_id   = emp.get("Employee Code", "")
+    emp_pos  = emp.get("Postition E", "")
 
-    dest = leave_data.get("destination", "inside")
-    city_from  = leave_data.get("city_from", "")
-    country_to = leave_data.get("country_to", "")
-    specify    = f"{city_from} → {country_to}" if city_from else country_to
+    leave_type_ar = {
+        "annual": "إجازة سنوية",
+        "sick":   "إجازة مرضية",
+        "unpaid": "إجازة بدون راتب",
+    }.get(leave_data.get("leave_type", ""), "إجازة")
 
-    fields = {
-        "Emp name":         str(emp.get("Employee Name Eng", "")),
-        "emp position":     str(emp.get("Postition E", "")),
-        "ID Number":        str(emp.get("Employee Code", "")),
-        "emp nationality":  str(emp.get("Nationality E", "")),
-        "company & Region": get_company_region(emp),
-        "Contact Numbers":  str(emp.get("Mobile", "")),
-        "leave start date": leave_data.get("start_date", ""),
-        "leave return date":leave_data.get("return_date", ""),
-        "Duration":         str(leave_data.get("duration", "")),
-        "Group1":           LEAVE_TYPE_MAP.get(leave_data.get("leave_type", "annual"), "Choice1"),
-        "Group2":           DESTINATION_MAP.get(dest, "Choice1"),
-        "Group3":           "1",
-        "Group4":           "Choice2",
-    }
+    dest_ar = "خارج المملكة" if leave_data.get("destination") == "outside" else "داخل المملكة"
+    if leave_data.get("destination") == "outside":
+        dest_ar += f" — {leave_data.get('city_from', '')} -> {leave_data.get('country_to', '')}"
 
-    if dest == "outside":
-        fields["Specify"] = specify
+    subject = f"[طلب إجازة #{request_id}] {emp_name} — {leave_type_ar}"
 
-    _fill_pdf(LEAVE_FORM, fields, output_path)
-    return output_path
+    body = f"""مرحباً،
 
+تم استلام طلب إجازة جديد من خلال البوت.
 
-def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
-    emp_name = str(emp.get("Employee Name Eng", "")).strip()
-    emp_id   = str(emp.get("Employee Code", "")).strip()
-    today    = date.today().strftime("%d/%m/%Y")
+بيانات الموظف:
+الاسم: {emp_name}
+الرقم الوظيفي: {emp_id}
+المسمى: {emp_pos}
+الجنسية: {emp.get('Nationality E', '')}
+الشركة/المنطقة: {emp.get('Business Unit', '')} - {emp.get('Region E', '')}
 
-    fields = {
-        "No":          emp_name,
-        "Text2":       emp_name,
-        "Text1":       emp_id,
-        "Text3":       emp_id,
-        "undefined":   emp_name,
-        "undefined_3": emp_name,
-        "undefined_4": today,
-    }
+تفاصيل الإجازة:
+نوع الإجازة: {leave_type_ar}
+تاريخ الذهاب: {leave_data.get('start_date', '')}
+تاريخ العودة: {leave_data.get('return_date', '')}
+المدة: {leave_data.get('duration', '')} يوم
+الوجهة: {dest_ar}
 
-    _fill_pdf(DECL_FORM, fields, output_path)
-    return output_path
+رقم الطلب: #{request_id}
+تاريخ التقديم: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
+تحياتي،
+نظام إدارة الطلبات — IKK Group"""
 
-def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
-                          field_id: str = "Signature4") -> Path:
-    """يضيف التوقيع على الـ PDF"""
-    import shutil
-    # في الوقت الحالي نحفظ الـ PDF كما هو مع التوقيع كصورة منفصلة
-    # يمكن تطوير هذا لاحقاً لدمج الصورة في الـ PDF
-    shutil.copy(str(pdf_path), str(output_path))
-    return output_path
+    message = Mail(
+        from_email=SMTP_USER,
+        to_emails=HR_EMAIL,
+        subject=subject,
+        plain_text_content=body,
+    )
 
+    # إضافة الـ CC
+    for cc in CC_EMAILS:
+        message.add_cc(Cc(cc))
 
-def merge_pdfs(pdf_paths: list[Path], output_path: Path) -> Path:
-    """يدمج قائمة PDF في ملف واحد"""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf = pikepdf.Pdf.new()
-    for p in pdf_paths:
-        src = pikepdf.open(str(p))
-        pdf.pages.extend(src.pages)
-    pdf.save(str(output_path))
-    return output_path
+    # إرفاق الـ PDF files
+    for pdf_path in pdf_paths:
+        with open(pdf_path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        attachment = Attachment(
+            FileContent(data),
+            FileName(pdf_path.name),
+            FileType("application/pdf"),
+            Disposition("attachment"),
+        )
+        message.add_attachment(attachment)
+
+    print(f"📧 Sending via SendGrid from {SMTP_USER} to {HR_EMAIL} + CC")
+
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    response = sg.send(message)
+    print(f"✅ Email sent! Status: {response.status_code}")
