@@ -73,7 +73,10 @@ def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
     import io
 
     # نحول الصورة لـ JPEG
-    img = Image.open(str(image_path)).convert("RGB")
+    img_orig = Image.open(str(image_path)).convert("RGBA")
+    background = Image.new("RGBA", img_orig.size, (255, 255, 255, 255))
+    background.paste(img_orig, mask=img_orig.split()[3])
+    img = background.convert("RGB")
     img_bytes = io.BytesIO()
     img.save(img_bytes, format="JPEG", quality=95)
     img_bytes.seek(0)
@@ -183,8 +186,8 @@ def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path
             output_path=output_path,
             x=120,    # من اليسار
             y=370,    # من الأسفل
-            width=150,
-            height=30,
+            width=120,
+            height=25,
             page_num=0
         )
     except Exception as e:
