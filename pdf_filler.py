@@ -37,6 +37,9 @@ def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
             pdf.save(str(output_path))
             return
 
+        # ✅ يجبر الـ PDF viewer يعرض القيم بشكل صح
+        acroform["/NeedAppearances"] = pikepdf.Boolean(True)
+
         def process_field(field):
             """معالجة كل حقل بشكل recursive"""
             # لو فيه kids، نعالجهم
