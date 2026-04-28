@@ -36,7 +36,7 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 
     dest_ar = "خارج المملكة" if leave_data.get("destination") == "outside" else "داخل المملكة"
     if leave_data.get("destination") == "outside":
-        dest_ar += f" — {leave_data.get('city_from', '')} <- {leave_data.get('country_to', '')}"
+        dest_ar += f" — {leave_data.get('city_from', '')} -> {leave_data.get('country_to', '')}"
 
     subject = f"[طلب إجازة #{request_id}] {emp_name} — {leave_type_ar}"
 
@@ -80,14 +80,14 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
         msg.attach(part)
 
     all_recipients = [HR_EMAIL] + CC_EMAILS
+    print(f"📧 Sending to {all_recipients}")
 
-    print(f"📧 Sending email from {SMTP_USER} to {all_recipients}")
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.set_debuglevel(1)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        result = server.sendmail(SMTP_USER, all_recipients, msg.as_string())
-        print(f"✅ Email sent! Result: {result}")
+    try:
+        # ✅ نستخدم SMTP_SSL على port 465 بدل STARTTLS
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            result = server.sendmail(SMTP_USER, all_recipients, msg.as_string())
+            print(f"✅ Email sent! Result: {result}")
+    except Exception as e:
+        print(f"❌ Email error: {e}")
+        raise
