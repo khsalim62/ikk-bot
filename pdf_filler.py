@@ -1,5 +1,5 @@
 """
-pdf_filler.py — ملء فورم الإجازة وفورم الإقرار تلقائياً
+pdf_filler.py — ملء فورم الإجازة وفورم الإقرار تلقائياً + إضافة التوقيع
 """
 from pathlib import Path
 from datetime import date
@@ -35,7 +35,6 @@ def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
             pdf.save(str(output_path))
             return
 
-        # ✅ NeedAppearances
         acroform[Name("/NeedAppearances")] = True
 
         def process_field(field):
@@ -64,6 +63,62 @@ def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
         for field_ref in acroform.Fields:
             process_field(field_ref)
 
+        pdf.save(str(output_path))
+
+
+def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
+                       x: float, y: float, width: float, height: float, page_num: int = 0):
+    """يضيف صورة على الـ PDF في موضع محدد"""
+    from PIL import Image
+    import io
+
+    # نحول الصورة لـ JPEG
+    img = Image.open(str(image_path)).convert("RGB")
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="JPEG", quality=95)
+    img_bytes.seek(0)
+
+    with Pdf.open(str(pdf_path)) as pdf:
+        page = pdf.pages[page_num]
+
+        # نضيف الصورة كـ XObject
+        image_obj = pikepdf.Stream(pdf, img_bytes.read())
+        image_obj.stream_dict = pikepdf.Dictionary(
+            Type=Name("/XObject"),
+            Subtype=Name("/Image"),
+            Width=img.width,
+            Height=img.height,
+            ColorSpace=Name("/DeviceRGB"),
+            BitsPerComponent=8,
+            Filter=Name("/DCTDecode"),
+        )
+
+        # نضيف الصورة لـ Resources
+        if "/Resources" not in page:
+            page[Name("/Resources")] = pikepdf.Dictionary()
+        if "/XObject" not in page.Resources:
+            page.Resources[Name("/XObject")] = pikepdf.Dictionary()
+
+        img_name = Name("/Sig0")
+        page.Resources.XObject[img_name] = image_obj
+
+        # نرسم الصورة على الصفحة
+        # PDF coordinates: bottom-left origin
+        draw_cmd = f"q {width} 0 0 {height} {x} {y} cm /Sig0 Do Q\n"
+
+        existing = b""
+        if "/Contents" in page:
+            contents = page.Contents
+            if isinstance(contents, pikepdf.Stream):
+                existing = contents.read_bytes()
+            elif isinstance(contents, list):
+                for c in contents:
+                    existing += c.read_bytes()
+
+        new_stream = pikepdf.Stream(pdf, existing + draw_cmd.encode())
+        page[Name("/Contents")] = new_stream
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         pdf.save(str(output_path))
 
 
@@ -118,8 +173,24 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
 def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
                           field_id: str = "Signature4") -> Path:
-    import shutil
-    shutil.copy(str(pdf_path), str(output_path))
+    """يضيف التوقيع على فورم الإجازة في موضع توقيع الموظف"""
+    try:
+        # موضع التوقيع في فورم الإجازة (x, y, width, height) بوحدة PDF points
+        # السطر: Employee's Signature في الفورم
+        _add_image_to_pdf(
+            pdf_path=pdf_path,
+            image_path=signature_image_path,
+            output_path=output_path,
+            x=120,    # من اليسار
+            y=370,    # من الأسفل
+            width=150,
+            height=30,
+            page_num=0
+        )
+    except Exception as e:
+        print(f"Signature add error: {e} — saving without signature")
+        import shutil
+        shutil.copy(str(pdf_path), str(output_path))
     return output_path
 
 
