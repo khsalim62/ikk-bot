@@ -10,21 +10,21 @@ from email import encoders
 from pathlib import Path
 from datetime import datetime
 
-
-# ===== إعدادات الإيميل — اتعدل في config.py =====
 SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER     = os.getenv("SMTP_USER", "")       # إيميل الشركة
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # App Password
-HR_EMAIL      = os.getenv("HR_EMAIL", "")        # إيميل HR المسؤول
+SMTP_USER     = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+HR_EMAIL      = os.getenv("HR_EMAIL", "")
+
+# ثابت في كل الطلبات
+CC_EMAILS = [
+    "syed.moin@ikkgroup.com",
+    "Amr.Hegazy@ikkgroup.com",
+    "Khaled.Salim@ikkgroup.com",
+]
 
 
 def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], request_id: str):
-    """
-    يبعت إيميل لـ HR مع الـ PDF المرفق.
-    
-    pdf_paths: قائمة بالـ PDF files (فورم الإجازة + فورم الإقرار لو موجود)
-    """
     emp_name = emp.get("Employee Name Eng", "")
     emp_id   = emp.get("Employee Code", "")
     emp_pos  = emp.get("Postition E", "")
@@ -79,6 +79,7 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
     msg = MIMEMultipart()
     msg["From"]    = SMTP_USER
     msg["To"]      = HR_EMAIL
+    msg["Cc"]      = ", ".join(CC_EMAILS)
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain", "utf-8"))
 
@@ -94,11 +95,13 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
         )
         msg.attach(part)
 
-    # إرسال
+    # إرسال لـ TO + CC
+    all_recipients = [HR_EMAIL] + CC_EMAILS
+
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
         server.ehlo()
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
-        server.sendmail(SMTP_USER, HR_EMAIL, msg.as_string())
+        server.sendmail(SMTP_USER, all_recipients, msg.as_string())
 
-    print(f"✅ إيميل أُرسل لـ HR — طلب #{request_id}")
+    print(f"✅ إيميل أُرسل لـ HR + CC — طلب #{request_id}")
