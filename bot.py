@@ -332,7 +332,6 @@ def main():
     async def run_all():
         # ✅ إنشاء السيرفر أولاً — Railway لازم يشوفه فوراً
         web_app = sig_srv.create_app()
-        web_app.router.add_post("/telegram", telegram_webhook)
 
         runner = web.AppRunner(web_app)
         await runner.setup()
