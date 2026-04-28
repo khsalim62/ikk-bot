@@ -57,16 +57,6 @@ TEXTS = {
         "confirm_yes": "✅ تأكيد",
         "confirm_no": "❌ إلغاء",
         "cancel": "تم الإلغاء. اكتب /start للبدء.",
-        "decl_text": "📄 *نموذج إقرار — سفر خارج المملكة*
-
-أنا الموقع أدناه أقر وأتعهد بأنه في حالة حدوث أي تأخير في عودتي من إجازتي بسبب وضع الحرب الحالي أو أي ظروف متعلقة بذلك، فإنني سأكون مسؤولاً بالكامل عن أي مصاريف تتحملها الشركة نيابة عني.
-
-وقد تشمل هذه المصاريف، على سبيل المثال لا الحصر، تمديد تأشيرة الخروج والعودة، أو إعادة إصدار أو تغيير تذكرة الطيران، أو تجديد الإقامة، أو أي تكاليف إدارية أخرى ذات صلة ناتجة عن التأخير.
-
-بموجب هذا، أفوض وأوافق على أن تقوم الشركة بخصم كامل مبلغ هذه المصاريف من راتبي أو أي مستحقات أخرى واجبة الدفع لي، وذلك وفقاً لسياسات الشركة والأنظمة المعمول بها.
-
-تم تقديم هذا الإقرار طواعية وبفهم كامل للشروط والأحكام المذكورة أعلاه.",
-        "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
@@ -96,16 +86,6 @@ TEXTS = {
         "confirm_yes": "✅ Confirm",
         "confirm_no": "❌ Cancel",
         "cancel": "Cancelled. Type /start to begin.",
-        "decl_text": "📄 *Declaration Form — Travel Outside KSA*
-
-I hereby declare and undertake that in the event of any delay in my return from vacation travel due to the current war situation or any related circumstances, I shall be fully responsible for any expenses incurred by the Company on my behalf.
-
-Such expenses may include, but are not limited to, extension of Exit/Re-Entry (ERE) visa, reissuance or change of air ticket, renewal of Iqama, or any other related administrative costs resulting from the delay.
-
-I hereby authorize and consent that the Company may deduct the full amount of such expenses from my salary or any other dues payable to me, in accordance with the Company's policies and applicable regulations.
-
-This declaration is made voluntarily and with full understanding of the above terms and conditions.",
-        "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
@@ -135,16 +115,6 @@ This declaration is made voluntarily and with full understanding of the above te
         "confirm_yes": "✅ تصدیق",
         "confirm_no": "❌ منسوخ",
         "cancel": "منسوخ۔ /start لکھیں۔",
-        "decl_text": "📄 *اقرارنامہ — سعودی عرب سے باہر سفر*
-
-میں اعلان کرتا ہوں اور عہد کرتا ہوں کہ موجودہ جنگی صورتحال یا اس سے متعلق کسی بھی حالات کی وجہ سے چھٹی سے واپسی میں کسی بھی تاخیر کی صورت میں، میں کمپنی کی جانب سے میری طرف سے اٹھائے گئے تمام اخراجات کا مکمل ذمہ دار ہوں گا۔
-
-ان اخراجات میں شامل ہو سکتے ہیں: ERE ویزا کی توسیع، ہوائی ٹکٹ کی دوبارہ اجراء یا تبدیلی، اقامہ کی تجدید، یا تاخیر کے نتیجے میں پیدا ہونے والے کوئی دیگر متعلقہ انتظامی اخراجات۔
-
-میں بموجب ہذا کمپنی کو اختیار دیتا اور رضامندی دیتا ہوں کہ وہ ان تمام اخراجات کی مکمل رقم میری تنخواہ یا مجھے واجب الادا کسی بھی دیگر مستحقات سے کمپنی کی پالیسیوں اور نافذ ضوابط کے مطابق کاٹ سکے۔
-
-یہ اقرار رضاکارانہ طور پر اور اوپر درج شرائط و احکام کی مکمل سمجھ کے ساتھ پیش کیا گیا ہے۔",
-        "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
