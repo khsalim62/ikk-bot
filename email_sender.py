@@ -7,13 +7,14 @@ from pathlib import Path
 from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
-    Mail, To, Cc, Attachment, FileContent, FileName,
+    Mail, Cc, Attachment, FileContent, FileName,
     FileType, Disposition
 )
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
-HR_EMAIL         = os.getenv("HR_EMAIL", "")
+HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
+HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
 
 CC_EMAILS = [
     "syed.moin@ikkgroup.com",
@@ -26,6 +27,11 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
     emp_name = emp.get("Employee Name Eng", "")
     emp_id   = emp.get("Employee Code", "")
     emp_pos  = emp.get("Postition E", "")
+
+    # ✅ تحديد الـ HR بناءً على المنطقة
+    region = str(emp.get("Region E", "")).strip().lower()
+    to_email = HR_EMAIL_WESTERN if region == "western" else HR_EMAIL
+    print(f"📧 Region: {region} → TO: {to_email}")
 
     leave_type_ar = {
         "annual": "إجازة سنوية",
@@ -65,16 +71,14 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 
     message = Mail(
         from_email=SMTP_USER,
-        to_emails=HR_EMAIL,
+        to_emails=to_email,
         subject=subject,
         plain_text_content=body,
     )
 
-    # إضافة الـ CC
     for cc in CC_EMAILS:
         message.add_cc(Cc(cc))
 
-    # إرفاق الـ PDF files
     for pdf_path in pdf_paths:
         with open(pdf_path, "rb") as f:
             data = base64.b64encode(f.read()).decode()
@@ -86,7 +90,7 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
         )
         message.add_attachment(attachment)
 
-    print(f"📧 Sending via SendGrid from {SMTP_USER} to {HR_EMAIL} + CC")
+    print(f"📧 Sending via SendGrid to {to_email} + CC")
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
