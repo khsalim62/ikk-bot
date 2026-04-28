@@ -188,7 +188,7 @@ def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path
             image_path=signature_image_path,
             output_path=output_path,
             x=120,
-            y=380,
+            y=390,
             width=120,
             height=25,
             page_num=0
