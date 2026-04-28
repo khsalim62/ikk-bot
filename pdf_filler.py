@@ -9,7 +9,7 @@ from datetime import date, datetime
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import NameObject, BooleanObject, ArrayObject, DictionaryObject
 
-FORMS_DIR = Path(__file__).parent / "forms"
+FORMS_DIR = Path(__file__).parent / "Forms"
 LEAVE_FORM = FORMS_DIR / "Leave_form_fillable.pdf"
 DECL_FORM  = FORMS_DIR / "Declaration_Form_.pdf"
 
