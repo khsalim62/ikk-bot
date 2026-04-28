@@ -183,15 +183,36 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
                           field_id: str = "Signature4") -> Path:
     try:
+        # نلاقي موضع الـ field في الـ PDF
+        from pikepdf import Pdf
+        sig_x, sig_y, sig_w, sig_h = 120, 390, 120, 25  # default للـ leave form
+        page_num = 0
+
+        with Pdf.open(str(pdf_path)) as pdf:
+            for p_num, page in enumerate(pdf.pages):
+                if "/Annots" not in page:
+                    continue
+                for annot in page.Annots:
+                    obj = annot
+                    t_val = str(obj.get("/T", "")).strip()
+                    if t_val == field_id and "/Rect" in obj:
+                        rect = obj["/Rect"]
+                        sig_x = float(rect[0])
+                        sig_y = float(rect[1])
+                        sig_w = float(rect[2]) - float(rect[0])
+                        sig_h = float(rect[3]) - float(rect[1])
+                        page_num = p_num
+                        break
+
         _add_image_to_pdf(
             pdf_path=pdf_path,
             image_path=signature_image_path,
             output_path=output_path,
-            x=120,
-            y=390,
-            width=120,
-            height=25,
-            page_num=0
+            x=sig_x,
+            y=sig_y,
+            width=sig_w,
+            height=sig_h,
+            page_num=page_num
         )
     except Exception as e:
         print(f"Signature add error: {e} — saving without signature")
