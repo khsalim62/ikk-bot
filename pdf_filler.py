@@ -162,21 +162,34 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
 
 
 def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
+    """يملأ فورم الإقرار باستخدام pypdf"""
+    from pypdf import PdfReader, PdfWriter
+
     emp_name = str(emp.get("Employee Name Eng", "")).strip()
     emp_id   = str(emp.get("Employee Code", "")).strip()
     today    = date.today().strftime("%d/%m/%Y")
 
-    fields = {
-        "No":          emp_name,
-        "Text2":       emp_name,
-        "Text1":       emp_id,
-        "Text3":       emp_id,
-        "undefined":   emp_name,
-        "undefined_3": emp_name,
-        "undefined_4": today,
-    }
+    reader = PdfReader(str(DECL_FORM))
+    writer = PdfWriter()
+    writer.clone_reader_document_root(reader)
 
-    _fill_pdf(DECL_FORM, fields, output_path)
+    writer.update_page_form_field_values(
+        writer.pages[0],
+        {
+            "No":          emp_name,
+            "Text2":       emp_name,
+            "Text1":       emp_id,
+            "Text3":       emp_id,
+            "undefined":   emp_name,
+            "undefined_3": emp_name,
+            "undefined_4": today,
+        }
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(str(output_path), "wb") as f:
+        writer.write(f)
+
     return output_path
 
 
