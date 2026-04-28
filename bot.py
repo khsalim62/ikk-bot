@@ -241,9 +241,9 @@ async def show_declaration(update_or_q, ctx, is_callback=False):
     kb = [[InlineKeyboardButton(t(ctx, "decl_confirm"), callback_data="decl_agree")]]
     text = t(ctx, "decl_text")
     if is_callback:
-        await update_or_q.edit_message_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+        await update_or_q.edit_message_text(text, reply_markup=InlineKeyboardMarkup(kb))
     else:
-        await update_or_q.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+        await update_or_q.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb))
     return LEAVE_DECLARATION
 
 async def declaration_agreed(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
