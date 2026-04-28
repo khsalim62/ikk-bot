@@ -12,20 +12,15 @@ from aiohttp import web
 SIGNATURES_DIR = Path(__file__).parent / "signatures"
 SIGNATURES_DIR.mkdir(exist_ok=True)
 
-# dict مؤقت: token → chat_id + request_data
 PENDING_SIGNATURES: dict = {}
-
-# الـ bot application (يتسيت من bot.py)
 BOT_APP = None
 
 
 def get_base_url() -> str:
-    """رابط السيرفر — يتجيب من الـ Environment"""
     return os.getenv("BASE_URL", "http://localhost:8080")
 
 
 def create_signature_token(chat_id: int, emp: dict, leave_data: dict, request_id: str) -> str:
-    """يولد token فريد للتوقيع ويحفظ البيانات"""
     token = str(uuid.uuid4()).replace("-", "")[:16]
     PENDING_SIGNATURES[token] = {
         "chat_id":    chat_id,
@@ -37,7 +32,6 @@ def create_signature_token(chat_id: int, emp: dict, leave_data: dict, request_id
 
 
 def get_signature_url(token: str, emp_name: str, req_id: str, leave_type: str) -> str:
-    """يرجع الرابط الكامل لصفحة التوقيع"""
     base = get_base_url()
     return (
         f"{base}/sign-page"
@@ -48,19 +42,15 @@ def get_signature_url(token: str, emp_name: str, req_id: str, leave_type: str) -
     )
 
 
-# ===== Routes =====
-
 async def signature_page(request: web.Request) -> web.Response:
-    """يعرض صفحة HTML للتوقيع"""
     html_path = Path(__file__).parent / "signature.html"
     html = html_path.read_text(encoding="utf-8")
     return web.Response(text=html, content_type="text/html")
 
 
 async def receive_signature(request: web.Request) -> web.Response:
-    """يستقبل التوقيع من الصفحة ويبعته للبوت"""
     try:
-        data = await request.json()
+        data    = await request.json()
         token   = data.get("token", "")
         sig_b64 = data.get("signature", "")
 
@@ -68,24 +58,22 @@ async def receive_signature(request: web.Request) -> web.Response:
         if not pending:
             return web.Response(status=404, text="Token not found")
 
-        # حفظ صورة التوقيع
-        sig_data = sig_b64.split(",")[1] if "," in sig_b64 else sig_b64
+        sig_data  = sig_b64.split(",")[1] if "," in sig_b64 else sig_b64
         sig_bytes = base64.b64decode(sig_data)
-        sig_path = SIGNATURES_DIR / f"sig_{token}.png"
+        sig_path  = SIGNATURES_DIR / f"sig_{token}.png"
         sig_path.write_bytes(sig_bytes)
 
-        # مسح الـ token
         del PENDING_SIGNATURES[token]
 
-        # ملء الـ PDF وإرسال الإيميل
         if BOT_APP:
-            chat_id    = pending["chat_id"]
-            request_id = pending["request_id"]
-            emp        = pending["emp"]
-            leave_data = pending["leave_data"]
-
             asyncio.create_task(
-                process_signed_request(chat_id, emp, leave_data, request_id, str(sig_path))
+                process_signed_request(
+                    pending["chat_id"],
+                    pending["emp"],
+                    pending["leave_data"],
+                    pending["request_id"],
+                    str(sig_path)
+                )
             )
 
         return web.Response(text="OK")
@@ -98,70 +86,12 @@ async def health(request: web.Request) -> web.Response:
     return web.Response(text="OK")
 
 
-async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
-    """يملأ الـ PDF ويبعت الإيميل ويبعت رسالة تأكيد للموظف"""
-    import tempfile
-    from pathlib import Path
-    from pdf_filler import fill_leave_form, fill_declaration_form
-    from email_sender import send_leave_request
-    from tracker import save_request
-
-    try:
-        tmp_dir = Path(tempfile.mkdtemp())
-
-        # ملء فورم الإجازة
-        leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
-        fill_leave_form(emp, leave_data, leave_pdf)
-        pdf_paths = [leave_pdf]
-
-        # فورم الإقرار لو السفر برة المملكة
-        if leave_data.get("destination") == "outside":
-            decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
-            fill_declaration_form(emp, leave_data, decl_pdf)
-            pdf_paths.append(decl_pdf)
-
-        # حفظ الطلب
-        save_request(request_id, emp, leave_data)
-
-        # إرسال الإيميل
-        try:
-            send_leave_request(emp, leave_data, pdf_paths, request_id)
-            email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
-        except Exception as e:
-            email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
-
-        # رسالة تأكيد للموظف في تيليجرام
-        if BOT_APP:
-            emp_name   = emp.get("Employee Name Eng", "")
-            start_date = leave_data.get("start_date", "")
-            end_date   = leave_data.get("return_date", "")
-            msg = (
-                "تم تقديم طلبك بنجاح!\n\n"
-                f"رقم الطلب: {request_id}\n"
-                f"{emp_name}\n"
-                f"{start_date} - {end_date}\n\n"
-                f"{email_status}\n\n"
-                "احتفظ برقم الطلب للمتابعة"
-            )
-            await BOT_APP.bot.send_message(
-                chat_id=chat_id,
-                text=msg,
-            )
-    except Exception as e:
-        print(f"Error processing request {request_id}: {e}")
-        if BOT_APP:
-            await BOT_APP.bot.send_message(
-                chat_id=chat_id,
-                text=f"⚠️ حدث خطأ في معالجة طلبك. تواصل مع HR مع رقم الطلب: {request_id}"
-            )
-
-
 async def telegram_webhook(request: web.Request) -> web.Response:
     """يستقبل updates من تيليجرام عبر webhook"""
     if BOT_APP is None:
-        return web.Response(status=503)
+        return web.Response(status=503, text="Bot not ready")
     try:
-        data = await request.json()
+        data   = await request.json()
         from telegram import Update
         update = Update.de_json(data, BOT_APP.bot)
         await BOT_APP.process_update(update)
@@ -170,16 +100,59 @@ async def telegram_webhook(request: web.Request) -> web.Response:
     return web.Response(text="OK")
 
 
+async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
+    import tempfile
+    from pdf_filler import fill_leave_form, fill_declaration_form
+    from email_sender import send_leave_request
+    from tracker import save_request
+
+    try:
+        tmp_dir   = Path(tempfile.mkdtemp())
+        leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
+        fill_leave_form(emp, leave_data, leave_pdf)
+        pdf_paths = [leave_pdf]
+
+        if leave_data.get("destination") == "outside":
+            decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
+            fill_declaration_form(emp, leave_data, decl_pdf)
+            pdf_paths.append(decl_pdf)
+
+        save_request(request_id, emp, leave_data)
+
+        try:
+            send_leave_request(emp, leave_data, pdf_paths, request_id)
+            email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
+        except Exception:
+            email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
+
+        if BOT_APP:
+            msg = (
+                "تم تقديم طلبك بنجاح!\n\n"
+                f"رقم الطلب: {request_id}\n"
+                f"{emp.get('Employee Name Eng', '')}\n"
+                f"{leave_data.get('start_date', '')} - {leave_data.get('return_date', '')}\n\n"
+                f"{email_status}\n\n"
+                "احتفظ برقم الطلب للمتابعة"
+            )
+            await BOT_APP.bot.send_message(chat_id=chat_id, text=msg)
+
+    except Exception as e:
+        print(f"Error processing request {request_id}: {e}")
+        if BOT_APP:
+            await BOT_APP.bot.send_message(
+                chat_id=chat_id,
+                text=f"⚠️ حدث خطأ. تواصل مع HR برقم الطلب: {request_id}"
+            )
+
+
 @web.middleware
 async def cors_middleware(request, handler):
     if request.method == "OPTIONS":
-        return web.Response(
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            }
-        )
+        return web.Response(headers={
+            "Access-Control-Allow-Origin":  "*",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        })
     response = await handler(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
@@ -188,24 +161,12 @@ async def cors_middleware(request, handler):
 def create_app() -> web.Application:
     app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/sign-page", signature_page)
-    app.router.add_post("/sign", receive_signature)
-    app.router.add_options("/sign", lambda r: web.Response(headers={
-        "Access-Control-Allow-Origin": "*",
+    app.router.add_post("/sign",     receive_signature)
+    app.router.add_options("/sign",  lambda r: web.Response(headers={
+        "Access-Control-Allow-Origin":  "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
     }))
-    app.router.add_get("/health", health)
-    # ✅ الـ telegram webhook مسجل هنا مباشرة
-    app.router.add_post("/telegram", telegram_webhook)
+    app.router.add_get("/health",       health)
+    app.router.add_post("/telegram",    telegram_webhook)
     return app
-
-
-async def start_server():
-    app = create_app()
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.getenv("PORT", "8080"))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"✅ Signature server running on port {port}")
-    return runner
