@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_CONFIRM, SIGNATURE, TRACK_ID = range(12)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, SIGNATURE, TRACK_ID = range(13)
 
 EMPLOYEES = {}
 def get_employees():
@@ -57,6 +57,7 @@ TEXTS = {
         "confirm_yes": "✅ تأكيد",
         "confirm_no": "❌ إلغاء",
         "cancel": "تم الإلغاء. اكتب /start للبدء.",
+        "enter_phone": "📱 أدخل رقم موبايلك:",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
     },
@@ -85,6 +86,7 @@ TEXTS = {
         "confirm_yes": "✅ Confirm",
         "confirm_no": "❌ Cancel",
         "cancel": "Cancelled. Type /start to begin.",
+        "enter_phone": "📱 Enter your mobile number:",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
     },
@@ -113,6 +115,7 @@ TEXTS = {
         "confirm_yes": "✅ تصدیق",
         "confirm_no": "❌ منسوخ",
         "cancel": "منسوخ۔ /start لکھیں۔",
+        "enter_phone": "📱 موبائل نمبر درج کریں:",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
     },
@@ -217,7 +220,8 @@ async def select_destination(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if ctx.user_data["destination"] == "outside":
         await q.edit_message_text(t(ctx, "enter_city_from"))
         return LEAVE_CITY_FROM
-    return await show_confirm_cb(q, ctx)
+    await q.edit_message_text(t(ctx, "enter_phone"))
+    return LEAVE_PHONE
 
 async def leave_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["city_from"] = update.message.text.strip()
@@ -226,6 +230,11 @@ async def leave_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def leave_country(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["country_to"] = update.message.text.strip()
+    await update.message.reply_text(t(ctx, "enter_phone"))
+    return LEAVE_PHONE
+
+async def leave_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    ctx.user_data["phone"] = update.message.text.strip()
     return await show_confirm_msg(update, ctx)
 
 def build_summary(ctx):
@@ -283,6 +292,7 @@ async def confirm_leave(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "city_from":   ud.get("city_from", ""),
         "country_to":  ud.get("country_to", ""),
         "duration":    ud.get("duration", 0),
+        "phone":       ud.get("phone", ""),
     }
     token   = sig_srv.create_signature_token(q.message.chat_id, emp, leave_data, request_id)
     sig_url = sig_srv.get_signature_url(token, emp.get("Employee Name Eng", ""), request_id, ud.get("leave_type", "annual"))
@@ -334,6 +344,7 @@ def main():
             LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_")],
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
             LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
+            LEAVE_PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_phone)],
             LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
