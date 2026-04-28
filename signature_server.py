@@ -102,14 +102,21 @@ async def telegram_webhook(request: web.Request) -> web.Response:
 
 async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
     import tempfile
-    from pdf_filler import fill_leave_form, fill_declaration_form
+    from pdf_filler import fill_leave_form, fill_declaration_form, add_signature_to_pdf
     from email_sender import send_leave_request
     from tracker import save_request
 
     try:
         tmp_dir   = Path(tempfile.mkdtemp())
+        from pdf_filler import add_signature_to_pdf
+
+        # ملء فورم الإجازة
+        leave_pdf_filled = tmp_dir / f"leave_filled_{request_id}.pdf"
+        fill_leave_form(emp, leave_data, leave_pdf_filled)
+
+        # إضافة التوقيع
         leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
-        fill_leave_form(emp, leave_data, leave_pdf)
+        add_signature_to_pdf(leave_pdf_filled, Path(sig_path), leave_pdf)
         pdf_paths = [leave_pdf]
 
         if leave_data.get("destination") == "outside":
