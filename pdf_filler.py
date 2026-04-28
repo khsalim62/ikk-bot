@@ -162,18 +162,12 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
 
 
 def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
-    """يملأ فورم الإقرار باستخدام pypdf"""
-    from pypdf import PdfReader, PdfWriter
-
+    """يملأ فورم الإقرار باستخدام pikepdf"""
     emp_name = str(emp.get("Employee Name Eng", "")).strip()
     emp_id   = str(emp.get("Employee Code", "")).strip()
     today    = date.today().strftime("%d/%m/%Y")
 
-    reader = PdfReader(str(DECL_FORM))
-    writer = PdfWriter()
-    writer.append(reader)
-
-    fields = {
+    fields_map = {
         "No":          emp_name,
         "Text2":       emp_name,
         "Text1":       emp_id,
@@ -183,12 +177,27 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
         "undefined_4": today,
     }
 
-    for page in writer.pages:
-        writer.update_page_form_field_values(page, fields)
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(str(output_path), "wb") as f:
-        writer.write(f)
+
+    with Pdf.open(str(DECL_FORM)) as pdf:
+        if "/AcroForm" not in pdf.Root:
+            pdf.save(str(output_path))
+            return output_path
+
+        acroform = pdf.Root.AcroForm
+        acroform[Name("/NeedAppearances")] = True
+
+        for field in acroform.Fields:
+            try:
+                name = str(field.get("/T", "")).strip()
+                if name in fields_map:
+                    field[Name("/V")] = String(fields_map[name])
+                    if "/AP" in field:
+                        del field[Name("/AP")]
+            except Exception:
+                pass
+
+        pdf.save(str(output_path))
 
     return output_path
 
