@@ -22,6 +22,27 @@ DESTINATION_MAP = {
 }
 
 
+def _set_radio_group(group_field, chosen_value: str):
+    """يحدد الـ radio button الصح في الـ group"""
+    chosen = Name("/" + chosen_value)
+    group_field[Name("/V")] = chosen
+    
+    # نحدث كل kid
+    if "/Kids" in group_field:
+        for kid in group_field.Kids:
+            ap_keys = []
+            if "/AP" in kid:
+                try:
+                    ap_keys = [str(k) for k in kid["/AP"]["/N"].keys()]
+                except:
+                    pass
+            # لو الـ chosen_value موجود في الـ AP keys بتاع الـ kid ده
+            if ("/" + chosen_value) in ap_keys:
+                kid[Name("/AS")] = chosen
+            else:
+                kid[Name("/AS")] = Name("/Off")
+
+
 def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -37,55 +58,44 @@ def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
 
         acroform[Name("/NeedAppearances")] = True
 
-        def process_field(field):
-            if "/Kids" in field:
-                for kid in field.Kids:
-                    process_field(kid)
-                return
-
-            field_name = str(field.get("/T", "")).strip()
+        for field_ref in acroform.Fields:
+            field_name = str(field_ref.get("/T", "")).strip()
             if not field_name or field_name not in fields:
-                return
+                continue
 
             value = fields[field_name]
-            field_type = str(field.get("/FT", "")).strip()
+            field_type = str(field_ref.get("/FT", "")).strip()
 
             if field_type == "/Tx":
-                field[Name("/V")] = String(str(value))
-                if "/AP" in field:
-                    del field[Name("/AP")]
+                field_ref[Name("/V")] = String(str(value))
+                if "/AP" in field_ref:
+                    del field_ref[Name("/AP")]
 
-            elif field_type == "/Btn":
-                choice = Name("/" + str(value))
-                field[Name("/V")] = choice
-                field[Name("/AS")] = choice
-
-        for field_ref in acroform.Fields:
-            process_field(field_ref)
+            elif field_type == "/Btn" or "/Kids" in field_ref:
+                _set_radio_group(field_ref, str(value))
 
         pdf.save(str(output_path))
 
 
 def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
                        x: float, y: float, width: float, height: float, page_num: int = 0):
-    """يضيف صورة على الـ PDF في موضع محدد"""
     from PIL import Image
     import io
 
-    # نحول الصورة لـ JPEG
     img_orig = Image.open(str(image_path)).convert("RGBA")
     background = Image.new("RGBA", img_orig.size, (255, 255, 255, 255))
     background.paste(img_orig, mask=img_orig.split()[3])
     img = background.convert("RGB")
+
     img_bytes = io.BytesIO()
     img.save(img_bytes, format="JPEG", quality=95)
     img_bytes.seek(0)
+    img_data = img_bytes.read()
 
     with Pdf.open(str(pdf_path)) as pdf:
         page = pdf.pages[page_num]
 
-        # نضيف الصورة كـ XObject
-        image_obj = pikepdf.Stream(pdf, img_bytes.read())
+        image_obj = pikepdf.Stream(pdf, img_data)
         image_obj.stream_dict = pikepdf.Dictionary(
             Type=Name("/XObject"),
             Subtype=Name("/Image"),
@@ -96,17 +106,13 @@ def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
             Filter=Name("/DCTDecode"),
         )
 
-        # نضيف الصورة لـ Resources
         if "/Resources" not in page:
             page[Name("/Resources")] = pikepdf.Dictionary()
         if "/XObject" not in page.Resources:
             page.Resources[Name("/XObject")] = pikepdf.Dictionary()
 
-        img_name = Name("/Sig0")
-        page.Resources.XObject[img_name] = image_obj
+        page.Resources.XObject[Name("/Sig0")] = image_obj
 
-        # نرسم الصورة على الصفحة
-        # PDF coordinates: bottom-left origin
         draw_cmd = f"q {width} 0 0 {height} {x} {y} cm /Sig0 Do Q\n"
 
         existing = b""
@@ -176,16 +182,13 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
 def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
                           field_id: str = "Signature4") -> Path:
-    """يضيف التوقيع على فورم الإجازة في موضع توقيع الموظف"""
     try:
-        # موضع التوقيع في فورم الإجازة (x, y, width, height) بوحدة PDF points
-        # السطر: Employee's Signature في الفورم
         _add_image_to_pdf(
             pdf_path=pdf_path,
             image_path=signature_image_path,
             output_path=output_path,
-            x=120,    # من اليسار
-            y=370,    # من الأسفل
+            x=120,
+            y=380,
             width=120,
             height=25,
             page_num=0
