@@ -61,6 +61,8 @@ TEXTS = {
         "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "back": "🔙 رجوع",
+        "restart": "🔄 بدء من جديد",
+        "idle_msg": "👋 اضغط الزرار للبدء:",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
     },
@@ -93,6 +95,8 @@ TEXTS = {
         "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
         "back": "🔙 Back",
+        "restart": "🔄 Start Over",
+        "idle_msg": "👋 Press the button to start:",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
     },
@@ -125,6 +129,8 @@ TEXTS = {
         "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "back": "🔙 واپس",
+        "restart": "🔄 دوبارہ شروع",
+        "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
     },
@@ -404,6 +410,33 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def unknown_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """يرد على أي رسالة خارج الـ conversation"""
+    lang = ctx.user_data.get("lang", "ar")
+    msgs = {
+        "ar": "👋 اضغط الزرار للبدء من جديد:",
+        "en": "👋 Press the button to start over:",
+        "ur": "👋 دوبارہ شروع کرنے کے لیے بٹن دبائیں:",
+    }
+    kb = [[InlineKeyboardButton(
+        {"ar": "🔄 بدء من جديد", "en": "🔄 Start Over", "ur": "🔄 دوبارہ شروع"}.get(lang, "🔄 بدء من جديد"),
+        callback_data="restart_bot"
+    )]]
+    await update.message.reply_text(msgs.get(lang, msgs["ar"]), reply_markup=InlineKeyboardMarkup(kb))
+
+async def restart_bot(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """يبدأ من جديد"""
+    q = update.callback_query
+    await q.answer()
+    ctx.user_data.clear()
+    kb = [
+        [InlineKeyboardButton("🇸🇦 عربي", callback_data="lang_ar")],
+        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
+        [InlineKeyboardButton("🇵🇰 اردو", callback_data="lang_ur")],
+    ]
+    await q.edit_message_text(TEXTS["ar"]["welcome"], reply_markup=InlineKeyboardMarkup(kb))
+    return LANG
+
 def main():
     token    = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -436,6 +469,9 @@ def main():
         allow_reentry=True,
     )
     ptb_app.add_handler(conv)
+    # handler للرسائل خارج الـ conversation
+    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message))
+    ptb_app.add_handler(CallbackQueryHandler(restart_bot, pattern="^restart_bot$"))
 
     async def run_all():
         # ✅ السيرفر يشتغل أولاً
