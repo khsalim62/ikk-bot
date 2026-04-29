@@ -1,14 +1,17 @@
 """
-email_sender.py — إرسال إيميل لـ HR عبر Mailgun
+email_sender.py — إرسال إيميل لـ HR عبر SendGrid
 """
 import os
 import base64
 from pathlib import Path
 from datetime import datetime
-import httpx
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (
+    Mail, Cc, Attachment, FileContent, FileName,
+    FileType, Disposition
+)
 
-MAILGUN_API_KEY  = os.getenv("MAILGUN_API_KEY", "")
-MAILGUN_DOMAIN   = os.getenv("MAILGUN_DOMAIN", "")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
 HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
 HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
@@ -65,32 +68,29 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 تحياتي،
 نظام إدارة الطلبات — IKK Group"""
 
-    # إعداد الـ files للإرفاق
-    files = []
-    for pdf_path in pdf_paths:
-        with open(pdf_path, "rb") as f:
-            files.append(("attachment", (pdf_path.name, f.read(), "application/pdf")))
-
-    data = {
-        "from": f"CRES HR <mailgun@{MAILGUN_DOMAIN}>",
-        "to": [to_email],
-        "cc": CC_EMAILS,
-        "subject": subject,
-        "text": body,
-    }
-
-    print(f"📧 Sending via Mailgun to {to_email} + CC")
-
-    response = httpx.post(
-        f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
-        auth=("api", MAILGUN_API_KEY),
-        data=data,
-        files=files,
-        timeout=30,
+    message = Mail(
+        from_email=SMTP_USER,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body,
     )
 
-    if response.status_code == 200:
-        print(f"✅ Email sent! {response.json()}")
-    else:
-        print(f"❌ Mailgun error: {response.status_code} — {response.text}")
-        raise Exception(f"Mailgun error: {response.status_code} — {response.text}")
+    for cc in CC_EMAILS:
+        message.add_cc(Cc(cc))
+
+    for pdf_path in pdf_paths:
+        with open(pdf_path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        attachment = Attachment(
+            FileContent(data),
+            FileName(pdf_path.name),
+            FileType("application/pdf"),
+            Disposition("attachment"),
+        )
+        message.add_attachment(attachment)
+
+    print(f"📧 Sending via SendGrid to {to_email} + CC")
+
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    response = sg.send(message)
+    print(f"✅ Email sent! Status: {response.status_code}")
