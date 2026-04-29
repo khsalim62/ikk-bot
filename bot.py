@@ -232,7 +232,6 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t(ctx, "not_labor"))
         return IDENTIFY
     ctx.user_data["emp"] = {k: str(v) if v is not None else "" for k, v in emp.items()}
-    from employees import is_labor
     if is_labor(emp):
         kb = [
             [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
@@ -259,7 +258,6 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ctx.user_data.clear()
         ctx.user_data["emp"] = emp
         ctx.user_data["lang"] = lang
-        from employees import is_labor
         if is_labor(emp):
             kb = [
                 [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
