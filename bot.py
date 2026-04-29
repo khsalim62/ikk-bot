@@ -499,7 +499,7 @@ def main():
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$")],
+        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$"), MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message)],
         allow_reentry=True,
     )
     ptb_app.add_handler(conv, group=0)
