@@ -252,16 +252,32 @@ async def leave_start_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         from datetime import date as today_date
         start_date = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
 
-        # تحقق إن التاريخ مش في الماضي
-        if start_date < today_date.today():
-            lang = ctx.user_data.get("lang", "ar")
-            msgs = {
-                "ar": "❌ لا يمكن اختيار تاريخ في الماضي. أدخل تاريخاً من اليوم أو بعده:",
-                "en": "❌ Date cannot be in the past. Please enter today or a future date:",
-                "ur": "❌ ماضی کی تاریخ نہیں ہو سکتی۔ آج یا آنے والی تاریخ درج کریں:",
-            }
-            await update.message.reply_text(msgs.get(lang, msgs["ar"]))
-            return LEAVE_START
+        # تحقق من التاريخ حسب نوع الإجازة
+        leave_type = ctx.user_data.get("leave_type", "annual")
+        today = today_date.today()
+
+        if leave_type == "sick":
+            # الإجازة المرضية: أي تاريخ في نفس السنة الحالية
+            if start_date.year != today.year:
+                lang = ctx.user_data.get("lang", "ar")
+                msgs = {
+                    "ar": "❌ يجب أن يكون التاريخ في سنة " + str(today.year) + ". أدخل تاريخاً صحيحاً:",
+                    "en": "❌ Date must be in " + str(today.year) + ". Please enter a valid date:",
+                    "ur": "❌ تاریخ " + str(today.year) + " میں ہونی چاہیے:",
+                }
+                await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+                return LEAVE_START
+        else:
+            # باقي الإجازات: لا يمكن تاريخ في الماضي
+            if start_date < today:
+                lang = ctx.user_data.get("lang", "ar")
+                msgs = {
+                    "ar": "❌ لا يمكن اختيار تاريخ في الماضي. أدخل تاريخاً من اليوم أو بعده:",
+                    "en": "❌ Date cannot be in the past. Please enter today or a future date:",
+                    "ur": "❌ ماضی کی تاریخ نہیں ہو سکتی۔ آج یا آنے والی تاریخ درج کریں:",
+                }
+                await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+                return LEAVE_START
         emp = ctx.user_data.get("emp", {})
         eligible, hired, eligible_date = await _check_two_years(emp, start_date)
         if not eligible:
