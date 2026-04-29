@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID = range(14)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO = range(15)
 
 EMPLOYEES = {}
 def get_employees():
@@ -60,6 +60,8 @@ TEXTS = {
         "decl_text": "📄 نموذج إقرار — سفر خارج المملكة\n\nأنا الموقع أدناه أقر وأتعهد بأنه في حالة حدوث أي تأخير في عودتي من إجازتي بسبب وضع الحرب الحالي، فإنني سأكون مسؤولاً بالكامل عن أي مصاريف تتحملها الشركة. تشمل: تمديد تأشيرة الخروج والعودة، تغيير تذكرة الطيران، تجديد الإقامة، أو أي تكاليف إدارية أخرى. أفوض الشركة بخصم هذه المصاريف من راتبي. تم تقديم هذا الإقرار طواعية وبفهم كامل.",
         "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
+        "sick_photo": "📸 أرسل صورة واضحة من التقرير الطبي:",
+        "sick_done": "✅ تم استلام طلب إجازتك المرضية بنجاح!\n\nرقم الطلب: {req_id}\n{name}\n{start} - {end}\n\nاحتفظ برقم الطلب للمتابعة.",
         "back": "🔙 رجوع",
         "restart": "🔄 بدء من جديد",
         "idle_msg": "👋 اضغط الزرار للبدء:",
@@ -94,6 +96,8 @@ TEXTS = {
         "decl_text": "📄 Declaration Form — Travel Outside KSA\n\nI hereby declare that in the event of any delay in my return from vacation due to the current war situation or any related circumstances, I shall be fully responsible for any expenses incurred by the Company on my behalf. Such expenses may include: ERE visa extension, air ticket changes, Iqama renewal, or any other administrative costs. I authorize the Company to deduct such expenses from my salary. This declaration is made voluntarily and with full understanding of the above terms.",
         "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
+        "sick_photo": "📸 Please send a clear photo of your medical report:",
+        "sick_done": "✅ Your sick leave request has been received!\n\nRequest ID: {req_id}\n{name}\n{start} - {end}\n\nKeep your request ID for follow-up.",
         "back": "🔙 Back",
         "restart": "🔄 Start Over",
         "idle_msg": "👋 Press the button to start:",
@@ -128,6 +132,8 @@ TEXTS = {
         "decl_text": "📄 اقرارنامہ — سعودی عرب سے باہر سفر\n\nمیں اعلان کرتا ہوں کہ موجودہ صورتحال کی وجہ سے واپسی میں تاخیر کی صورت میں، میں کمپنی کے تمام اخراجات کا ذمہ دار ہوں گا۔ ان میں ERE ویزا، ہوائی ٹکٹ، اقامہ تجدید شامل ہیں۔ میں کمپنی کو یہ اخراجات تنخواہ سے کاٹنے کا اختیار دیتا ہوں۔ یہ اقرار رضاکارانہ طور پر کیا گیا ہے۔",
         "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
+        "sick_photo": "📸 طبی رپورٹ کی واضح تصویر بھیجیں:",
+        "sick_done": "✅ آپ کی بیماری چھٹی کی درخواست موصول ہوئی!\n\nدرخواست نمبر: {req_id}\n{name}\n{start} - {end}\n\nپیروی کے لیے نمبر محفوظ رکھیں۔",
         "back": "🔙 واپس",
         "restart": "🔄 دوبارہ شروع",
         "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
@@ -214,7 +220,8 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def select_leave_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    ctx.user_data["leave_type"] = q.data.replace("leave_", "")
+    leave_type = q.data.replace("leave_", "")
+    ctx.user_data["leave_type"] = leave_type
     await q.edit_message_text(t(ctx, "enter_start"))
     return LEAVE_START
 
@@ -283,6 +290,12 @@ async def leave_return_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             return LEAVE_RETURN
         ctx.user_data["return_date"] = update.message.text.strip()
         ctx.user_data["duration"]    = (ret - start).days
+
+        # لو إجازة مرضية — نطلب الصورة مباشرة
+        if ctx.user_data.get("leave_type") == "sick":
+            await update.message.reply_text(t(ctx, "sick_photo"))
+            return SICK_PHOTO
+
         kb = [
             [InlineKeyboardButton(t(ctx, "dest_inside"),  callback_data="dest_inside")],
             [InlineKeyboardButton(t(ctx, "dest_outside"), callback_data="dest_outside")],
@@ -375,6 +388,52 @@ async def declaration_agreed(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     await q.edit_message_text(t(ctx, "enter_phone"))
     return LEAVE_PHONE
+
+async def sick_leave_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """يستقبل صورة التقرير الطبي ويبعت الإيميل"""
+    if not update.message.photo:
+        await update.message.reply_text(t(ctx, "sick_photo"))
+        return SICK_PHOTO
+
+    ud = ctx.user_data
+    emp = ud.get("emp", {})
+    request_id = generate_request_id()
+
+    # حفظ الطلب
+    leave_data = {
+        "leave_type":  "sick",
+        "start_date":  ud.get("start_date", ""),
+        "return_date": ud.get("return_date", ""),
+        "destination": "inside",
+        "duration":    ud.get("duration", 0),
+    }
+    save_request(request_id, emp, leave_data)
+
+    # إرسال الإيميل مع الصورة
+    try:
+        from email_sender import send_sick_leave
+        photo = update.message.photo[-1]
+        photo_file = await photo.get_file()
+        import tempfile, os
+        tmp = tempfile.mktemp(suffix=".jpg")
+        await photo_file.download_to_drive(tmp)
+        send_sick_leave(emp, leave_data, tmp, request_id)
+        os.unlink(tmp)
+        email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
+    except Exception as e:
+        print(f"Sick leave email error: {e}")
+        email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
+
+    lang = ud.get("lang", "ar")
+    msg = t(ctx, "sick_done",
+        req_id=request_id,
+        name=emp.get("Employee Name Eng", ""),
+        start=ud.get("start_date", ""),
+        end=ud.get("return_date", "")
+    ) + "\n\n" + email_status
+
+    await update.message.reply_text(msg)
+    return ConversationHandler.END
 
 def build_summary(ctx):
     ud  = ctx.user_data
@@ -524,6 +583,7 @@ def main():
             LEAVE_DECLARATION: [CallbackQueryHandler(declaration_agreed, pattern="^decl_agree$")],
             LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
+            SICK_PHOTO:      [MessageHandler(filters.PHOTO, sick_leave_photo), MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(t(c, "sick_photo")))],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
         fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$"), MessageHandler(filters.TEXT & ~filters.COMMAND, invalid_input)],
