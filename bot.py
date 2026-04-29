@@ -673,17 +673,36 @@ async def btr_email(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 def build_summary(ctx):
-    ud  = ctx.user_data
-    emp = ud.get("emp", {})
-    lmap = {"annual": "سنوية/Annual", "sick": "مرضية/Sick", "unpaid": "بدون راتب/Unpaid"}
-    dest = "داخل المملكة" if ud.get("destination") == "inside" else f"خارج المملكة - {ud.get('city_from','')} → {ud.get('country_to','')}"
+    ud   = ctx.user_data
+    emp  = ud.get("emp", {})
+    lang = ud.get("lang", "ar")
+
+    lmap = {
+        "ar": {"annual": "إجازة سنوية", "sick": "إجازة مرضية",  "unpaid": "إجازة بدون راتب"},
+        "en": {"annual": "Annual Leave", "sick": "Sick Leave",    "unpaid": "Unpaid Leave"},
+        "ur": {"annual": "سالانہ چھٹی",  "sick": "بیمار چھٹی",   "unpaid": "بغیر تنخواہ"},
+    }
+    dest_inside  = {"ar": "داخل المملكة", "en": "Inside KSA",    "ur": "سعودی عرب میں"}
+    dest_outside = {"ar": "خارج المملكة", "en": "Outside KSA",   "ur": "باہر"}
+    dur_label    = {"ar": "يوم",           "en": "days",          "ur": "دن"}
+    title        = {"ar": "ملخص الطلب",   "en": "Request Summary", "ur": "خلاصہ"}
+
+    leave_str = lmap.get(lang, lmap["ar"]).get(ud.get("leave_type", ""), "")
+    if ud.get("destination") == "outside":
+        dest_str = dest_outside.get(lang, dest_outside["ar"])
+        dest_str += " - " + ud.get("city_from", "") + " → " + ud.get("country_to", "")
+    else:
+        dest_str = dest_inside.get(lang, dest_inside["ar"])
+
     return (
-        f"👤 *{emp.get('Employee Name Eng','')}*\n"
-        f"🏖 {lmap.get(ud.get('leave_type',''),'')}\n"
-        f"📅 {ud.get('start_date')} → {ud.get('return_date')}\n"
-        f"⏱ {ud.get('duration')} يوم\n"
-        f"🌍 {dest}"
+        "📋 *" + title.get(lang, title["ar"]) + "*\n\n"
+        "👤 *" + emp.get("Employee Name Eng", "") + "*\n"
+        "🏖 " + leave_str + "\n"
+        "📅 " + str(ud.get("start_date", "")) + " → " + str(ud.get("return_date", "")) + "\n"
+        "⏱ " + str(ud.get("duration", "")) + " " + dur_label.get(lang, "يوم") + "\n"
+        "🌍 " + dest_str
     )
+
 
 async def show_confirm_cb(q, ctx):
     kb = [[
