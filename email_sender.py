@@ -1,5 +1,5 @@
 """
-email_sender.py — إرسال إيميل لـ HR عبر Resend
+email_sender.py — إرسال إيميل لـ HR عبر Mailgun
 """
 import os
 import base64
@@ -7,7 +7,8 @@ from pathlib import Path
 from datetime import datetime
 import httpx
 
-RESEND_API_KEY   = os.getenv("RESEND_API_KEY", "")
+MAILGUN_API_KEY  = os.getenv("MAILGUN_API_KEY", "")
+MAILGUN_DOMAIN   = os.getenv("MAILGUN_DOMAIN", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
 HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
 HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
@@ -64,37 +65,32 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 تحياتي،
 نظام إدارة الطلبات — IKK Group"""
 
-    # إرفاق الـ PDFs
-    attachments = []
+    # إعداد الـ files للإرفاق
+    files = []
     for pdf_path in pdf_paths:
         with open(pdf_path, "rb") as f:
-            data = base64.b64encode(f.read()).decode()
-        attachments.append({
-            "filename": pdf_path.name,
-            "content": data,
-            "type": "application/pdf",
-        })
+            files.append(("attachment", (pdf_path.name, f.read(), "application/pdf")))
 
-    payload = {
-        "from": f"CRES HR <onboarding@resend.dev>",
+    data = {
+        "from": f"CRES HR <mailgun@{MAILGUN_DOMAIN}>",
         "to": [to_email],
         "cc": CC_EMAILS,
         "subject": subject,
         "text": body,
-        "attachments": attachments,
     }
 
-    print(f"📧 Sending via Resend to {to_email} + CC")
+    print(f"📧 Sending via Mailgun to {to_email} + CC")
 
     response = httpx.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
-        json=payload,
+        f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
+        auth=("api", MAILGUN_API_KEY),
+        data=data,
+        files=files,
         timeout=30,
     )
 
-    if response.status_code in (200, 201):
-        print(f"✅ Email sent! ID: {response.json().get('id')}")
+    if response.status_code == 200:
+        print(f"✅ Email sent! {response.json()}")
     else:
-        print(f"❌ Resend error: {response.status_code} — {response.text}")
-        raise Exception(f"Resend error: {response.status_code} — {response.text}")
+        print(f"❌ Mailgun error: {response.status_code} — {response.text}")
+        raise Exception(f"Mailgun error: {response.status_code} — {response.text}")
