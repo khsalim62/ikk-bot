@@ -35,7 +35,7 @@ TEXTS = {
     "ar": {
         "welcome": "👋 أهلاً بك في بوت خدمات الموارد البشرية\nاختر لغتك / Choose your language / اپنی زبان منتخب کریں",
         "enter_id": "🔢 أدخل رقمك الوظيفي أو رقم إقامتك:",
-        "not_found": "❌ الرقم غير موجود. تأكد وحاول مجدداً.",
+        "not_found": "❌ الرقم غير موجود. تأكد وحاول مجدداً، أو اكتب /start للبدء من جديد.",
         "not_labor": "⚠️ هذه الخدمة للعمال فقط.",
         "welcome_emp": "✅ مرحباً {name}!\nاختر الخدمة:",
         "menu_leave": "🏖 طلب إجازة",
@@ -69,7 +69,7 @@ TEXTS = {
     "en": {
         "welcome": "👋 Welcome to HR Self-Service Bot\nChoose your language / اختر لغتك / اپنی زبان منتخب کریں",
         "enter_id": "🔢 Enter your Employee ID or Iqama number:",
-        "not_found": "❌ ID not found. Please try again.",
+        "not_found": "❌ ID not found. Please try again, or type /start to restart.",
         "not_labor": "⚠️ This service is for Labor employees only.",
         "welcome_emp": "✅ Welcome {name}!\nSelect a service:",
         "menu_leave": "🏖 Leave Request",
@@ -103,7 +103,7 @@ TEXTS = {
     "ur": {
         "welcome": "👋 HR سیلف سروس بوٹ میں خوش آمدید\nاپنی زبان منتخب کریں",
         "enter_id": "🔢 ملازم نمبر یا اقامہ نمبر درج کریں:",
-        "not_found": "❌ نمبر نہیں ملا۔",
+        "not_found": "❌ نمبر نہیں ملا۔ /start لکھیں۔",
         "not_labor": "⚠️ صرف مزدور ملازمین کے لیے۔",
         "welcome_emp": "✅ خوش آمدید {name}!\nخدمت منتخب کریں:",
         "menu_leave": "🏖 چھٹی کی درخواست",
@@ -509,7 +509,6 @@ def main():
     )
     ptb_app.add_handler(conv, group=0)
     ptb_app.add_handler(CommandHandler("restart", start), group=1)
-    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message), group=1)
 
     async def run_all():
         # ✅ السيرفر يشتغل أولاً
