@@ -228,9 +228,6 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not emp:
         await update.message.reply_text(t(ctx, "not_found"))
         return IDENTIFY
-    if not is_labor(emp):
-        await update.message.reply_text(t(ctx, "not_labor"))
-        return IDENTIFY
     ctx.user_data["emp"] = {k: str(v) if v is not None else "" for k, v in emp.items()}
     if is_labor(emp):
         kb = [
