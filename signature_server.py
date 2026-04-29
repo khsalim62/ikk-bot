@@ -109,15 +109,21 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
     try:
         tmp_dir = Path(tempfile.mkdtemp())
 
-        # ملء فورم الإجازة
+        from pdf_filler import add_signature_to_pdf
+
+        # ملء فورم الإجازة + إضافة التوقيع
+        leave_pdf_filled = tmp_dir / f"leave_filled_{request_id}.pdf"
+        fill_leave_form(emp, leave_data, leave_pdf_filled)
         leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
-        fill_leave_form(emp, leave_data, leave_pdf)
+        add_signature_to_pdf(leave_pdf_filled, Path(sig_path), leave_pdf)
         pdf_paths = [leave_pdf]
 
-        # فورم الإقرار لو السفر برة المملكة
+        # فورم الإقرار لو السفر برة المملكة + إضافة التوقيع
         if leave_data.get("destination") == "outside":
+            decl_pdf_filled = tmp_dir / f"declaration_filled_{request_id}.pdf"
+            fill_declaration_form(emp, leave_data, decl_pdf_filled)
             decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
-            fill_declaration_form(emp, leave_data, decl_pdf)
+            add_signature_to_pdf(decl_pdf_filled, Path(sig_path), decl_pdf, field_id="Signature4")
             pdf_paths.append(decl_pdf)
 
         # حفظ الطلب
@@ -135,18 +141,14 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
             emp_name   = emp.get("Employee Name Eng", "")
             start_date = leave_data.get("start_date", "")
             end_date   = leave_data.get("return_date", "")
-            msg = (
-                "تم تقديم طلبك بنجاح!\n\n"
-                f"رقم الطلب: {request_id}\n"
-                f"{emp_name}\n"
-                f"{start_date} - {end_date}\n\n"
-                f"{email_status}\n\n"
-                "احتفظ برقم الطلب للمتابعة"
-            )
-            await BOT_APP.bot.send_message(
-                chat_id=chat_id,
-                text=msg,
-            )
+            lang       = leave_data.get("lang", "ar")
+            if lang == "en":
+                done_msg = f"Your request has been submitted successfully!\n\nRequest ID: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nKeep your request ID for follow-up."
+            elif lang == "ur":
+                done_msg = f"آپ کی درخواست کامیابی سے جمع ہو گئی!\n\nدرخواست نمبر: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nپیروی کے لیے نمبر محفوظ رکھیں۔"
+            else:
+                done_msg = f"تم تقديم طلبك بنجاح!\n\nرقم الطلب: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nاحتفظ برقم الطلب للمتابعة"
+            await BOT_APP.bot.send_message(chat_id=chat_id, text=done_msg)
     except Exception as e:
         print(f"Error processing request {request_id}: {e}")
         if BOT_APP:
