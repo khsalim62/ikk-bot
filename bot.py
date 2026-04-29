@@ -213,9 +213,43 @@ async def select_leave_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await q.edit_message_text(t(ctx, "enter_start"))
     return LEAVE_START
 
+async def _check_two_years(emp: dict, start_date) -> tuple:
+    """يتحقق إن الموظف أكمل سنتين — يرجع (True, None, None) لو مؤهل"""
+    hiring_date_str = ""
+    for key in ["Hiring date", "HiringDate", "Hiring Date", "hiring date"]:
+        val = str(emp.get(key, "") or "").strip()
+        if val and val not in ("None", ""):
+            hiring_date_str = val
+            break
+    if not hiring_date_str:
+        return True, None, None
+    for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y"]:
+        try:
+            from dateutil.relativedelta import relativedelta
+            hd = datetime.strptime(hiring_date_str, fmt).date()
+            two_years = hd + relativedelta(years=2)
+            if start_date < two_years:
+                return False, hd.strftime("%d/%m/%Y"), two_years.strftime("%d/%m/%Y")
+            return True, None, None
+        except:
+            continue
+    return True, None, None
+
 async def leave_start_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
-        datetime.strptime(update.message.text.strip(), "%Y-%m-%d")
+        start_date = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
+        emp = ctx.user_data.get("emp", {})
+        eligible, hired, eligible_date = await _check_two_years(emp, start_date)
+        if not eligible:
+            lang = ctx.user_data.get("lang", "ar")
+            if lang == "en":
+                msg = "Sorry, you have not completed 2 years (hired: " + hired + "). Eligible after: " + eligible_date + ". Please contact your regional HR officer."
+            elif lang == "ur":
+                msg = "معذرت، 2 سال مکمل نہیں (تقرری: " + hired + ")۔ اہلیت: " + eligible_date + "۔ HR افسر سے رابطہ کریں۔"
+            else:
+                msg = "عذراً، لم تكتمل سنتان من تاريخ التحاقك (" + hired + "). ستكون مؤهلاً بعد: " + eligible_date + ". يرجى التواصل مع موظف HR في منطقتك."
+            await update.message.reply_text("⚠️ " + msg)
+            return LEAVE_START
         ctx.user_data["start_date"] = update.message.text.strip()
         await update.message.reply_text(t(ctx, "enter_return"))
         return LEAVE_RETURN
