@@ -23,11 +23,8 @@ DESTINATION_MAP = {
 
 
 def _set_radio_group(group_field, chosen_value: str):
-    """يحدد الـ radio button الصح في الـ group"""
     chosen = Name("/" + chosen_value)
     group_field[Name("/V")] = chosen
-    
-    # نحدث كل kid
     if "/Kids" in group_field:
         for kid in group_field.Kids:
             ap_keys = []
@@ -36,7 +33,6 @@ def _set_radio_group(group_field, chosen_value: str):
                     ap_keys = [str(k) for k in kid["/AP"]["/N"].keys()]
                 except:
                     pass
-            # لو الـ chosen_value موجود في الـ AP keys بتاع الـ kid ده
             if ("/" + chosen_value) in ap_keys:
                 kid[Name("/AS")] = chosen
             else:
@@ -45,35 +41,27 @@ def _set_radio_group(group_field, chosen_value: str):
 
 def _fill_pdf(template_path: Path, fields: dict, output_path: Path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with Pdf.open(str(template_path)) as pdf:
         if "/AcroForm" not in pdf.Root:
             pdf.save(str(output_path))
             return
-
         acroform = pdf.Root.AcroForm
         if "/Fields" not in acroform:
             pdf.save(str(output_path))
             return
-
         acroform[Name("/NeedAppearances")] = True
-
         for field_ref in acroform.Fields:
             field_name = str(field_ref.get("/T", "")).strip()
             if not field_name or field_name not in fields:
                 continue
-
             value = fields[field_name]
             field_type = str(field_ref.get("/FT", "")).strip()
-
             if field_type == "/Tx":
                 field_ref[Name("/V")] = String(str(value))
                 if "/AP" in field_ref:
                     del field_ref[Name("/AP")]
-
             elif field_type == "/Btn" or "/Kids" in field_ref:
                 _set_radio_group(field_ref, str(value))
-
         pdf.save(str(output_path))
 
 
@@ -94,7 +82,6 @@ def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
 
     with Pdf.open(str(pdf_path)) as pdf:
         page = pdf.pages[page_num]
-
         image_obj = pikepdf.Stream(pdf, img_data)
         image_obj.stream_dict = pikepdf.Dictionary(
             Type=Name("/XObject"),
@@ -105,16 +92,12 @@ def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
             BitsPerComponent=8,
             Filter=Name("/DCTDecode"),
         )
-
         if "/Resources" not in page:
             page[Name("/Resources")] = pikepdf.Dictionary()
         if "/XObject" not in page.Resources:
             page.Resources[Name("/XObject")] = pikepdf.Dictionary()
-
         page.Resources.XObject[Name("/Sig0")] = image_obj
-
         draw_cmd = f"q {width} 0 0 {height} {x} {y} cm /Sig0 Do Q\n"
-
         existing = b""
         if "/Contents" in page:
             contents = page.Contents
@@ -123,10 +106,8 @@ def _add_image_to_pdf(pdf_path: Path, image_path: Path, output_path: Path,
             elif isinstance(contents, list):
                 for c in contents:
                     existing += c.read_bytes()
-
         new_stream = pikepdf.Stream(pdf, existing + draw_cmd.encode())
         page[Name("/Contents")] = new_stream
-
         output_path.parent.mkdir(parents=True, exist_ok=True)
         pdf.save(str(output_path))
 
@@ -162,7 +143,7 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
 
 
 def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
-    """يملأ فورم الإقرار باستخدام pikepdf"""
+    """يملأ فورم الإقرار مع appearance streams"""
     emp_name = str(emp.get("Employee Name Eng", "")).strip()
     emp_id   = str(emp.get("Employee Code", "")).strip()
     today    = date.today().strftime("%d/%m/%Y")
@@ -189,26 +170,27 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 
         for field in acroform.Fields:
             try:
-                name = str(field.get("/T", "")).strip()
-                if name in fields_map:
-                    field[Name("/V")] = String(fields_map[name])
-                    if "/AP" in field:
-                        del field[Name("/AP")]
-            except Exception:
-                pass
+                fname = str(field.get("/T", "")).strip()
+                if fname not in fields_map:
+                    continue
+                value = fields_map[fname]
+                field[Name("/V")] = String(value)
+                rect = field.get("/Rect")
+                if rect:
+                    w = float(rect[2]) - float(rect[0])
+                    h = float(rect[3]) - float(rect[1])
+                    ap_stream = f"BT /Helv 8 Tf 2 2 Td ({value}) Tj ET"
+                    stream = pikepdf.Stream(pdf, ap_stream.encode())
+                    stream.stream_dict = pikepdf.Dictionary(
+                        Type=Name("/XObject"),
+                        Subtype=Name("/Form"),
+                        BBox=pikepdf.Array([0, 0, w, h]),
+                    )
+                    field[Name("/AP")] = pikepdf.Dictionary(N=stream)
+            except Exception as e:
+                print(f"Field error: {e}")
 
         pdf.save(str(output_path))
-
-    # flatten باستخدام pdftk عشان البيانات تظهر في كل الـ viewers
-    import subprocess
-    flat_path = str(output_path) + "_flat.pdf"
-    result = subprocess.run(
-        ["pdftk", str(output_path), "output", flat_path, "flatten"],
-        capture_output=True
-    )
-    if result.returncode == 0:
-        import shutil
-        shutil.move(flat_path, str(output_path))
 
     return output_path
 
@@ -216,9 +198,7 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
 def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path: Path,
                           field_id: str = "Signature4") -> Path:
     try:
-        # نلاقي موضع الـ field في الـ PDF
-        from pikepdf import Pdf
-        sig_x, sig_y, sig_w, sig_h = 120, 390, 120, 25  # default للـ leave form
+        sig_x, sig_y, sig_w, sig_h = 120, 390, 120, 25
         page_num = 0
 
         with Pdf.open(str(pdf_path)) as pdf:
@@ -248,7 +228,7 @@ def add_signature_to_pdf(pdf_path: Path, signature_image_path: Path, output_path
             page_num=page_num
         )
     except Exception as e:
-        print(f"Signature add error: {e} — saving without signature")
+        print(f"Signature add error: {e}")
         import shutil
         shutil.copy(str(pdf_path), str(output_path))
     return output_path
