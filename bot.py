@@ -504,30 +504,6 @@ def main():
     )
     ptb_app.add_handler(conv, group=0)
     ptb_app.add_handler(CommandHandler("restart", start), group=1)
-    # لما يبعت رسالة خارج الـ conversation
-    async def handle_unknown(update, ctx):
-        if update.message:
-            lang = ctx.user_data.get("lang", "ar")
-            kb = [[InlineKeyboardButton(
-                {"ar": "🔄 بدء من جديد", "en": "🔄 Start Over", "ur": "🔄 دوبارہ شروع"}.get(lang, "🔄 بدء من جديد"),
-                callback_data="restart_now"
-            )]]
-            msgs = {"ar": "👋 اضغط للبدء من جديد:", "en": "👋 Press to start over:", "ur": "👋 دوبارہ شروع کریں:"}
-            await update.message.reply_text(msgs.get(lang, msgs["ar"]), reply_markup=InlineKeyboardMarkup(kb))
-
-    async def handle_restart_now(update, ctx):
-        q = update.callback_query
-        await q.answer()
-        ctx.user_data.clear()
-        kb = [
-            [InlineKeyboardButton("🇸🇦 عربي", callback_data="lang_ar")],
-            [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
-            [InlineKeyboardButton("🇵🇰 اردو", callback_data="lang_ur")],
-        ]
-        await q.edit_message_text(TEXTS["ar"]["welcome"], reply_markup=InlineKeyboardMarkup(kb))
-
-    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown), group=2)
-    ptb_app.add_handler(CallbackQueryHandler(handle_restart_now, pattern="^restart_now$"), group=2)
 
     async def run_all():
         # ✅ السيرفر يشتغل أولاً
