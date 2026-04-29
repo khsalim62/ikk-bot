@@ -143,55 +143,32 @@ def fill_leave_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
 
 
 def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Path:
-    """يملأ فورم الإقرار مع appearance streams"""
     emp_name = str(emp.get("Employee Name Eng", "")).strip()
     emp_id   = str(emp.get("Employee Code", "")).strip()
     today    = date.today().strftime("%d/%m/%Y")
-
-    fields_map = {
-        "No":          emp_name,
-        "Text2":       emp_name,
-        "Text1":       emp_id,
-        "Text3":       emp_id,
-        "undefined":   emp_name,
-        "undefined_3": emp_name,
-        "undefined_4": today,
-    }
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with Pdf.open(str(DECL_FORM)) as pdf:
-        if "/AcroForm" not in pdf.Root:
-            pdf.save(str(output_path))
-            return output_path
-
-        acroform = pdf.Root.AcroForm
-        acroform[Name("/NeedAppearances")] = True
-
-        for field in acroform.Fields:
-            try:
-                fname = str(field.get("/T", "")).strip()
-                if fname not in fields_map:
-                    continue
-                value = fields_map[fname]
-                field[Name("/V")] = String(value)
-                rect = field.get("/Rect")
-                if rect:
-                    w = float(rect[2]) - float(rect[0])
-                    h = float(rect[3]) - float(rect[1])
-                    ap_stream = f"BT /Helv 8 Tf 2 2 Td ({value}) Tj ET"
-                    stream = pikepdf.Stream(pdf, ap_stream.encode())
-                    stream.stream_dict = pikepdf.Dictionary(
-                        Type=Name("/XObject"),
-                        Subtype=Name("/Form"),
-                        BBox=pikepdf.Array([0, 0, w, h]),
-                    )
-                    field[Name("/AP")] = pikepdf.Dictionary(N=stream)
-            except Exception as e:
-                print(f"Field error: {e}")
-
+        page = pdf.pages[0]
+        text_items = [
+            (emp_name, 39.5,  623.4),
+            (emp_id,   46.5,  609.5),
+            (emp_name, 313.9, 622.9),
+            (emp_id,   411.1, 609.5),
+            (emp_name, 40.0,  334.1),
+            (emp_name, 308.2, 334.1),
+            (today,    308.2, 305.5),
+        ]
+        lines = []
+        for text, x, y in text_items:
+            t = text.replace("(", "\\(").replace(")", "\\)")
+            cmd = "BT /TT1 8 Tf " + str(x) + " " + str(y) + " Td (" + t + ") Tj ET"
+            lines.append(cmd)
+        text_stream = "\n".join(lines) + "\n"
+        contents_list = list(page["/Contents"])
+        new_stream = pikepdf.Stream(pdf, text_stream.encode())
+        contents_list.append(new_stream)
+        page[Name("/Contents")] = pikepdf.Array(contents_list)
         pdf.save(str(output_path))
-
     return output_path
 
 
