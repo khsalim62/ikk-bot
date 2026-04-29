@@ -728,6 +728,7 @@ async def confirm_leave(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "country_to":  ud.get("country_to", ""),
         "duration":    ud.get("duration", 0),
         "phone":       ud.get("phone", ""),
+        "lang":        ud.get("lang", "ar"),
     }
     token   = sig_srv.create_signature_token(q.message.chat_id, emp, leave_data, request_id)
     sig_url = sig_srv.get_signature_url(token, emp.get("Employee Name Eng", ""), request_id, ud.get("leave_type", "annual"))
