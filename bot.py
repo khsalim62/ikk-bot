@@ -153,12 +153,7 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
         [InlineKeyboardButton("🇵🇰 اردو", callback_data="lang_ur")],
     ]
-    msg = await update.message.reply_text(welcome_msg, reply_markup=InlineKeyboardMarkup(kb))
-    # Pin الرسالة بدون إشعار
-    try:
-        await update.message.chat.pin_message(msg.message_id, disable_notification=True)
-    except Exception:
-        pass
+    await update.message.reply_text(welcome_msg, reply_markup=InlineKeyboardMarkup(kb))
     return LANG
 
 async def select_language(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -453,6 +448,16 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(t(ctx, "cancel"))
     return ConversationHandler.END
 
+async def invalid_input(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """يرد على أي إدخال غير صحيح"""
+    lang = ctx.user_data.get("lang", "ar")
+    msgs = {
+        "ar": "لم يتم إدخال قيمة صحيحة للبدء — اكتب /start",
+        "en": "Invalid input — type /start to begin",
+        "ur": "غلط قدر — /start لکھیں",
+    }
+    await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+
 
 async def unknown_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """يرد على أي رسالة خارج الـ conversation"""
@@ -509,7 +514,7 @@ def main():
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$")],
+        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$"), MessageHandler(filters.TEXT & ~filters.COMMAND, invalid_input)],
         allow_reentry=True,
     )
     ptb_app.add_handler(conv, group=0)
