@@ -1,15 +1,15 @@
 """
-email_sender.py — إرسال إيميل لـ HR مع الـ PDF المرفق عبر SendGrid
+email_sender.py — إرسال إيميل لـ HR عبر SendGrid SMTP
 """
 import os
+import smtplib
 import base64
 from pathlib import Path
 from datetime import datetime
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Mail, Cc, Attachment, FileContent, FileName,
-    FileType, Disposition
-)
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
@@ -28,7 +28,6 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
     emp_id   = emp.get("Employee Code", "")
     emp_pos  = emp.get("Postition E", "")
 
-    # ✅ تحديد الـ HR بناءً على المنطقة
     region = str(emp.get("Region E", "")).strip().lower()
     to_email = HR_EMAIL_WESTERN if region == "western" else HR_EMAIL
     print(f"📧 Region: {region} → TO: {to_email}")
@@ -69,29 +68,30 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 تحياتي،
 نظام إدارة الطلبات — IKK Group"""
 
-    message = Mail(
-        from_email=SMTP_USER,
-        to_emails=to_email,
-        subject=subject,
-        plain_text_content=body,
-    )
-
-    for cc in CC_EMAILS:
-        message.add_cc(Cc(cc))
+    msg = MIMEMultipart()
+    msg["From"]    = SMTP_USER
+    msg["To"]      = to_email
+    msg["Cc"]      = ", ".join(CC_EMAILS)
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain", "utf-8"))
 
     for pdf_path in pdf_paths:
         with open(pdf_path, "rb") as f:
-            data = base64.b64encode(f.read()).decode()
-        attachment = Attachment(
-            FileContent(data),
-            FileName(pdf_path.name),
-            FileType("application/pdf"),
-            Disposition("attachment"),
-        )
-        message.add_attachment(attachment)
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename={pdf_path.name}")
+        msg.attach(part)
 
-    print(f"📧 Sending via SendGrid to {to_email} + CC")
+    all_recipients = [to_email] + CC_EMAILS
 
-    sg = SendGridAPIClient(SENDGRID_API_KEY)
-    response = sg.send(message)
-    print(f"✅ Email sent! Status: {response.status_code}")
+    print(f"📧 Sending via SendGrid SMTP to {to_email} + CC")
+
+    # SendGrid SMTP
+    with smtplib.SMTP("smtp.sendgrid.net", 587) as server:
+        server.ehlo()
+        server.starttls()
+        server.login("apikey", SENDGRID_API_KEY)
+        server.sendmail(SMTP_USER, all_recipients, msg.as_string())
+
+    print(f"✅ Email sent!")
