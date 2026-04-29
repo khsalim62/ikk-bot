@@ -1,22 +1,20 @@
 """
-email_sender.py — إرسال إيميل لـ HR مع الـ PDF المرفق عبر SendGrid
+email_sender.py — إرسال إيميل لـ HR عبر Resend
 """
 import os
 import base64
 from pathlib import Path
 from datetime import datetime
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Mail, Cc, Attachment, FileContent, FileName,
-    FileType, Disposition
-)
+import httpx
 
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
+RESEND_API_KEY   = os.getenv("RESEND_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
 HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
 HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
 
 CC_EMAILS = [
+    "syed.moin@ikkgroup.com",
+    "Amr.Hegazy@ikkgroup.com",
     "Khaled.Salim@ikkgroup.com",
 ]
 
@@ -66,29 +64,37 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
 تحياتي،
 نظام إدارة الطلبات — IKK Group"""
 
-    message = Mail(
-        from_email=SMTP_USER,
-        to_emails=to_email,
-        subject=subject,
-        plain_text_content=body,
-    )
-
-    for cc in CC_EMAILS:
-        message.add_cc(Cc(cc))
-
+    # إرفاق الـ PDFs
+    attachments = []
     for pdf_path in pdf_paths:
         with open(pdf_path, "rb") as f:
             data = base64.b64encode(f.read()).decode()
-        attachment = Attachment(
-            FileContent(data),
-            FileName(pdf_path.name),
-            FileType("application/pdf"),
-            Disposition("attachment"),
-        )
-        message.add_attachment(attachment)
+        attachments.append({
+            "filename": pdf_path.name,
+            "content": data,
+            "type": "application/pdf",
+        })
 
-    print(f"📧 Sending via SendGrid to {to_email} + CC")
+    payload = {
+        "from": f"CRES HR <onboarding@resend.dev>",
+        "to": [to_email],
+        "cc": CC_EMAILS,
+        "subject": subject,
+        "text": body,
+        "attachments": attachments,
+    }
 
-    sg = SendGridAPIClient(SENDGRID_API_KEY)
-    response = sg.send(message)
-    print(f"✅ Email sent! Status: {response.status_code}")
+    print(f"📧 Sending via Resend to {to_email} + CC")
+
+    response = httpx.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+        json=payload,
+        timeout=30,
+    )
+
+    if response.status_code in (200, 201):
+        print(f"✅ Email sent! ID: {response.json().get('id')}")
+    else:
+        print(f"❌ Resend error: {response.status_code} — {response.text}")
+        raise Exception(f"Resend error: {response.status_code} — {response.text}")
