@@ -230,16 +230,46 @@ async def select_destination(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return LEAVE_PHONE
 
 async def leave_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    ctx.user_data["city_from"] = update.message.text.strip()
+    city = update.message.text.strip()
+    if any(char.isdigit() for char in city):
+        msgs = {
+            "ar": "❌ اسم المدينة يجب أن يحتوي على حروف فقط. أدخله مجدداً:",
+            "en": "❌ City name must contain letters only. Please re-enter:",
+            "ur": "❌ شہر کا نام صرف حروف پر مشتمل ہونا چاہیے:",
+        }
+        lang = ctx.user_data.get("lang", "ar")
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return LEAVE_CITY_FROM
+    ctx.user_data["city_from"] = city
     await update.message.reply_text(t(ctx, "enter_country"))
     return LEAVE_COUNTRY
 
 async def leave_country(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    ctx.user_data["country_to"] = update.message.text.strip()
+    country = update.message.text.strip()
+    if any(char.isdigit() for char in country):
+        msgs = {
+            "ar": "❌ اسم البلد يجب أن يحتوي على حروف فقط. أدخله مجدداً:",
+            "en": "❌ Country name must contain letters only. Please re-enter:",
+            "ur": "❌ ملک کا نام صرف حروف پر مشتمل ہونا چاہیے:",
+        }
+        lang = ctx.user_data.get("lang", "ar")
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return LEAVE_COUNTRY
+    ctx.user_data["country_to"] = country
     return await show_declaration(update, ctx, is_callback=False)
 
 async def leave_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    ctx.user_data["phone"] = update.message.text.strip()
+    phone = update.message.text.strip()
+    if not phone.isdigit() or len(phone) < 10:
+        msgs = {
+            "ar": "❌ رقم الموبايل يجب أن يكون 10 أرقام على الأقل. أدخله مجدداً:",
+            "en": "❌ Mobile number must be at least 10 digits. Please re-enter:",
+            "ur": "❌ موبائل نمبر کم از کم 10 ہندسے ہونے چاہئیں:",
+        }
+        lang = ctx.user_data.get("lang", "ar")
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return LEAVE_PHONE
+    ctx.user_data["phone"] = phone
     return await show_confirm_msg(update, ctx)
 
 async def show_declaration(update_or_q, ctx, is_callback=False):
