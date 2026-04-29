@@ -153,7 +153,12 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
         [InlineKeyboardButton("🇵🇰 اردو", callback_data="lang_ur")],
     ]
-    await update.message.reply_text(welcome_msg, reply_markup=InlineKeyboardMarkup(kb))
+    msg = await update.message.reply_text(welcome_msg, reply_markup=InlineKeyboardMarkup(kb))
+    # Pin الرسالة بدون إشعار
+    try:
+        await update.message.chat.pin_message(msg.message_id, disable_notification=True)
+    except Exception:
+        pass
     return LANG
 
 async def select_language(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
