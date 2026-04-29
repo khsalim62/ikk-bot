@@ -482,7 +482,7 @@ def main():
     sig_srv.BOT_APP = ptb_app
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler("start", start), MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message)],
         states={
             LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
             IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
@@ -499,7 +499,7 @@ def main():
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$"), MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message)],
+        fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$")],
         allow_reentry=True,
     )
     ptb_app.add_handler(conv, group=0)
