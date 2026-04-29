@@ -147,8 +147,11 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
     emp_id   = str(emp.get("Employee Code", "")).strip()
     today    = date.today().strftime("%d/%m/%Y")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with Pdf.open(str(DECL_FORM)) as pdf:
         page = pdf.pages[0]
+
+        # بيانات الموظف في مواضعها على الصفحة
         text_items = [
             (emp_name, 39.5,  623.4),
             (emp_id,   46.5,  609.5),
@@ -158,17 +161,30 @@ def fill_declaration_form(emp: dict, leave_data: dict, output_path: Path) -> Pat
             (emp_name, 308.2, 334.1),
             (today,    308.2, 305.5),
         ]
+
         lines = []
         for text, x, y in text_items:
             t = text.replace("(", "\\(").replace(")", "\\)")
-            cmd = "BT /TT1 8 Tf " + str(x) + " " + str(y) + " Td (" + t + ") Tj ET"
-            lines.append(cmd)
-        text_stream = "\n".join(lines) + "\n"
-        contents_list = list(page["/Contents"])
-        new_stream = pikepdf.Stream(pdf, text_stream.encode())
-        contents_list.append(new_stream)
-        page[Name("/Contents")] = pikepdf.Array(contents_list)
-        pdf.save(str(output_path))
+            lines.append("BT /TT1 8 Tf " + str(x) + " " + str(y) + " Td (" + t + ") Tj ET")
+
+        text_bytes = ("\n".join(lines) + "\n").encode()
+        text_stream = pikepdf.Stream(pdf, text_bytes)
+
+        # نضيف كـ stream إضافي للـ contents array
+        if "/Contents" in page:
+            existing = page["/Contents"]
+            if isinstance(existing, pikepdf.Array):
+                existing.append(text_stream)
+                page[Name("/Contents")] = existing
+            else:
+                page[Name("/Contents")] = pikepdf.Array([existing, text_stream])
+        else:
+            page[Name("/Contents")] = text_stream
+
+        pdf.save(str(output_path),
+                 compress_streams=False,
+                 stream_decode_level=pikepdf.StreamDecodeLevel.all)
+
     return output_path
 
 
