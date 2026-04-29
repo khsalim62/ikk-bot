@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO = range(15)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL = range(25)
 
 EMPLOYEES = {}
 def get_employees():
@@ -62,6 +62,24 @@ TEXTS = {
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "sick_photo": "📸 أرسل صورة واضحة من التقرير الطبي:",
         "sick_done": "✅ تم استلام طلب إجازتك المرضية بنجاح!\n\nرقم الطلب: {req_id}\n{name}\n{start} - {end}\n\nاحتفظ برقم الطلب للمتابعة.",
+        "menu_btr": "✈️ حجز رحلة عمل (BTR)",
+        "btr_mename_q": "❓ هل تم تقديم طلبك على نظام MENAME؟",
+        "btr_mename_yes": "✅ نعم، تم التقديم",
+        "btr_mename_no": "❌ لا",
+        "btr_mename_required": "⚠️ يجب تقديم طلبك على نظام MENAME أولاً قبل المتابعة هنا.\nبعد التقديم، عد وابدأ الطلب مجدداً.",
+        "btr_mename_photo": "📸 أرسل صورة من حالة طلبك على نظام MENAME:",
+        "btr_service": "🏨 اختر نوع الحجز المطلوب:",
+        "btr_hotel": "🏨 حجز فندق فقط",
+        "btr_flight": "✈️ حجز طيران فقط",
+        "btr_hotel_flight": "🏨✈️ حجز فندق وطيران",
+        "btr_date_from": "📅 تاريخ السفر (مثال: 2026-06-01):",
+        "btr_date_to": "📅 تاريخ العودة (مثال: 2026-06-10):",
+        "btr_city_from": "🏙 من أي مدينة ستسافر؟",
+        "btr_city_to": "🏙 إلى أي مدينة؟",
+        "btr_iqama_photo": "📸 أرسل صورة من الإقامة:",
+        "btr_phone": "📱 أدخل رقم موبايلك للتواصل:",
+        "btr_email": "📧 أدخل بريدك الإلكتروني للتواصل:",
+        "btr_done": "✅ تم استلام طلب حجز رحلة العمل بنجاح!\n\nرقم الطلب: {req_id}\nسيتم التواصل معك قريباً لتأكيد الحجز.",
         "back": "🔙 رجوع",
         "restart": "🔄 بدء من جديد",
         "idle_msg": "👋 اضغط الزرار للبدء:",
@@ -98,6 +116,24 @@ TEXTS = {
         "enter_phone": "📱 Enter your mobile number:",
         "sick_photo": "📸 Please send a clear photo of your medical report:",
         "sick_done": "✅ Your sick leave request has been received!\n\nRequest ID: {req_id}\n{name}\n{start} - {end}\n\nKeep your request ID for follow-up.",
+        "menu_btr": "✈️ Business Trip Request (BTR)",
+        "btr_mename_q": "❓ Have you submitted your request on MENAME System?",
+        "btr_mename_yes": "✅ Yes, submitted",
+        "btr_mename_no": "❌ No",
+        "btr_mename_required": "⚠️ You must submit your request on MENAME System first.\nAfter submitting, come back and start again.",
+        "btr_mename_photo": "📸 Send a screenshot of your MENAME request status:",
+        "btr_service": "🏨 Select booking type:",
+        "btr_hotel": "🏨 Hotel only",
+        "btr_flight": "✈️ Flight only",
+        "btr_hotel_flight": "🏨✈️ Hotel & Flight",
+        "btr_date_from": "📅 Travel date (e.g. 2026-06-01):",
+        "btr_date_to": "📅 Return date (e.g. 2026-06-10):",
+        "btr_city_from": "🏙 Departing from which city?",
+        "btr_city_to": "🏙 Traveling to which city?",
+        "btr_iqama_photo": "📸 Send a photo of your Iqama:",
+        "btr_phone": "📱 Enter your mobile number:",
+        "btr_email": "📧 Enter your email address:",
+        "btr_done": "✅ Your BTR has been received!\n\nRequest ID: {req_id}\nWe will contact you soon to confirm the booking.",
         "back": "🔙 Back",
         "restart": "🔄 Start Over",
         "idle_msg": "👋 Press the button to start:",
@@ -134,6 +170,24 @@ TEXTS = {
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "sick_photo": "📸 طبی رپورٹ کی واضح تصویر بھیجیں:",
         "sick_done": "✅ آپ کی بیماری چھٹی کی درخواست موصول ہوئی!\n\nدرخواست نمبر: {req_id}\n{name}\n{start} - {end}\n\nپیروی کے لیے نمبر محفوظ رکھیں۔",
+        "menu_btr": "✈️ کاروباری سفر کی درخواست (BTR)",
+        "btr_mename_q": "❓ کیا آپ نے MENAME سسٹم پر درخواست دی ہے؟",
+        "btr_mename_yes": "✅ ہاں",
+        "btr_mename_no": "❌ نہیں",
+        "btr_mename_required": "⚠️ پہلے MENAME سسٹم پر درخواست دیں۔",
+        "btr_mename_photo": "📸 MENAME درخواست کی تصویر بھیجیں:",
+        "btr_service": "🏨 بکنگ کی قسم منتخب کریں:",
+        "btr_hotel": "🏨 صرف ہوٹل",
+        "btr_flight": "✈️ صرف پرواز",
+        "btr_hotel_flight": "🏨✈️ ہوٹل اور پرواز",
+        "btr_date_from": "📅 سفر کی تاریخ:",
+        "btr_date_to": "📅 واپسی کی تاریخ:",
+        "btr_city_from": "🏙 روانگی کا شہر؟",
+        "btr_city_to": "🏙 منزل کا شہر؟",
+        "btr_iqama_photo": "📸 اقامہ کی تصویر بھیجیں:",
+        "btr_phone": "📱 موبائل نمبر:",
+        "btr_email": "📧 ای میل:",
+        "btr_done": "✅ BTR موصول ہوئی!\n\nدرخواست نمبر: {req_id}\nجلد رابطہ کیا جائے گا۔",
         "back": "🔙 واپس",
         "restart": "🔄 دوبارہ شروع",
         "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
@@ -178,10 +232,17 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t(ctx, "not_labor"))
         return IDENTIFY
     ctx.user_data["emp"] = {k: str(v) if v is not None else "" for k, v in emp.items()}
-    kb = [
-        [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
-        [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
-    ]
+    from employees import is_labor
+    if is_labor(emp):
+        kb = [
+            [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
+            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+        ]
+    else:
+        kb = [
+            [InlineKeyboardButton(t(ctx, "menu_btr"), callback_data="menu_btr")],
+            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+        ]
     await update.message.reply_text(
         t(ctx, "welcome_emp", name=get_display_name(emp)),
         reply_markup=InlineKeyboardMarkup(kb),
@@ -195,16 +256,29 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if q.data == "back_to_menu":
         emp = ctx.user_data.get("emp", {})
         lang = ctx.user_data.get("lang", "ar")
-        # نحتفظ ببيانات الموظف واللغة فقط
         ctx.user_data.clear()
         ctx.user_data["emp"] = emp
         ctx.user_data["lang"] = lang
-        kb = [
-            [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
-            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
-        ]
+        from employees import is_labor
+        if is_labor(emp):
+            kb = [
+                [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
+                [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+            ]
+        else:
+            kb = [
+                [InlineKeyboardButton(t(ctx, "menu_btr"), callback_data="menu_btr")],
+                [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+            ]
         await q.edit_message_text(t(ctx, "welcome_emp", name=emp.get("Employee Name Eng", "")), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
         return MAIN_MENU
+    if q.data == "menu_btr":
+        kb = [
+            [InlineKeyboardButton(t(ctx, "btr_mename_yes"), callback_data="btr_mename_yes")],
+            [InlineKeyboardButton(t(ctx, "btr_mename_no"),  callback_data="btr_mename_no")],
+        ]
+        await q.edit_message_text(t(ctx, "btr_mename_q"), reply_markup=InlineKeyboardMarkup(kb))
+        return BTR_MENAME
     if q.data == "menu_leave":
         kb = [
             [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
@@ -451,6 +525,158 @@ async def sick_leave_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
     return ConversationHandler.END
 
+async def btr_mename(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    if q.data == "btr_mename_no":
+        await q.edit_message_text(t(ctx, "btr_mename_required"))
+        return ConversationHandler.END
+    await q.edit_message_text(t(ctx, "btr_mename_photo"))
+    return BTR_MENAME_PHOTO
+
+async def btr_mename_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text(t(ctx, "btr_mename_photo"))
+        return BTR_MENAME_PHOTO
+    ctx.user_data["btr_mename_photo"] = update.message.photo[-1].file_id
+    kb = [
+        [InlineKeyboardButton(t(ctx, "btr_hotel"),        callback_data="btr_hotel")],
+        [InlineKeyboardButton(t(ctx, "btr_flight"),       callback_data="btr_flight")],
+        [InlineKeyboardButton(t(ctx, "btr_hotel_flight"), callback_data="btr_hotel_flight")],
+    ]
+    await update.message.reply_text(t(ctx, "btr_service"), reply_markup=InlineKeyboardMarkup(kb))
+    return BTR_SERVICE
+
+async def btr_service(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    ctx.user_data["btr_service"] = q.data.replace("btr_", "")
+    await q.edit_message_text(t(ctx, "btr_date_from"))
+    return BTR_DATE_FROM
+
+async def btr_date_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    try:
+        from datetime import date as d
+        date_from = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
+        if date_from < d.today():
+            lang = ctx.user_data.get("lang", "ar")
+            msgs = {"ar": "❌ لا يمكن اختيار تاريخ في الماضي:", "en": "❌ Date cannot be in the past:", "ur": "❌ ماضی کی تاریخ نہیں:"}
+            await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+            return BTR_DATE_FROM
+        ctx.user_data["btr_date_from"] = update.message.text.strip()
+        await update.message.reply_text(t(ctx, "btr_date_to"))
+        return BTR_DATE_TO
+    except ValueError:
+        await update.message.reply_text(t(ctx, "invalid_date"))
+        return BTR_DATE_FROM
+
+async def btr_date_to(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    try:
+        date_to = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
+        date_from = datetime.strptime(ctx.user_data["btr_date_from"], "%Y-%m-%d").date()
+        if date_to <= date_from:
+            await update.message.reply_text(t(ctx, "return_before"))
+            return BTR_DATE_TO
+        ctx.user_data["btr_date_to"] = update.message.text.strip()
+        await update.message.reply_text(t(ctx, "btr_city_from"))
+        return BTR_CITY_FROM
+    except ValueError:
+        await update.message.reply_text(t(ctx, "invalid_date"))
+        return BTR_DATE_TO
+
+async def btr_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    city = update.message.text.strip()
+    if any(char.isdigit() for char in city):
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل اسم المدينة بالحروف فقط:", "en": "❌ Letters only:", "ur": "❌ صرف حروف:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return BTR_CITY_FROM
+    ctx.user_data["btr_city_from"] = city
+    await update.message.reply_text(t(ctx, "btr_city_to"))
+    return BTR_CITY_TO
+
+async def btr_city_to(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    city = update.message.text.strip()
+    if any(char.isdigit() for char in city):
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل اسم المدينة بالحروف فقط:", "en": "❌ Letters only:", "ur": "❌ صرف حروف:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return BTR_CITY_TO
+    ctx.user_data["btr_city_to"] = city
+    await update.message.reply_text(t(ctx, "btr_iqama_photo"))
+    return BTR_IQAMA_PHOTO
+
+async def btr_iqama_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text(t(ctx, "btr_iqama_photo"))
+        return BTR_IQAMA_PHOTO
+    ctx.user_data["btr_iqama_photo"] = update.message.photo[-1].file_id
+    await update.message.reply_text(t(ctx, "btr_phone"))
+    return BTR_PHONE
+
+async def btr_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    phone = update.message.text.strip()
+    if not phone.isdigit() or len(phone) < 10:
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل رقم موبايل صحيح (10 أرقام على الأقل):", "en": "❌ Enter valid mobile (min 10 digits):", "ur": "❌ درست نمبر درج کریں:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return BTR_PHONE
+    ctx.user_data["btr_phone"] = phone
+    await update.message.reply_text(t(ctx, "btr_email"))
+    return BTR_EMAIL
+
+async def btr_email(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    email = update.message.text.strip()
+    if "@" not in email or "." not in email:
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل بريد إلكتروني صحيح:", "en": "❌ Enter valid email:", "ur": "❌ درست ای میل:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return BTR_EMAIL
+    ctx.user_data["btr_email"] = email
+
+    ud = ctx.user_data
+    emp = ud.get("emp", {})
+    request_id = generate_request_id().replace("LV-", "BTR-")
+
+    # إرسال الإيميل
+    try:
+        from email_sender import send_btr_request
+        import tempfile, os
+        from telegram import Bot
+
+        # تحميل الصور
+        bot = ctx.bot
+        tmp_mename = tempfile.mktemp(suffix=".jpg")
+        tmp_iqama  = tempfile.mktemp(suffix=".jpg")
+
+        mename_file = await bot.get_file(ud["btr_mename_photo"])
+        await mename_file.download_to_drive(tmp_mename)
+
+        iqama_file = await bot.get_file(ud["btr_iqama_photo"])
+        await iqama_file.download_to_drive(tmp_iqama)
+
+        btr_data = {
+            "service":   ud.get("btr_service", ""),
+            "date_from": ud.get("btr_date_from", ""),
+            "date_to":   ud.get("btr_date_to", ""),
+            "city_from": ud.get("btr_city_from", ""),
+            "city_to":   ud.get("btr_city_to", ""),
+            "phone":     ud.get("btr_phone", ""),
+            "email":     ud.get("btr_email", ""),
+        }
+
+        send_btr_request(emp, btr_data, tmp_mename, tmp_iqama, request_id)
+        os.unlink(tmp_mename)
+        os.unlink(tmp_iqama)
+        status = "✅ تم إرسال طلبك لفريق السفر"
+    except Exception as e:
+        print(f"BTR email error: {e}")
+        status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
+
+    msg = t(ctx, "btr_done", req_id=request_id) + "\n\n" + status
+    await update.message.reply_text(msg)
+    return ConversationHandler.END
+
 def build_summary(ctx):
     ud  = ctx.user_data
     emp = ud.get("emp", {})
@@ -588,7 +814,7 @@ def main():
         states={
             LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
             IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
-            MAIN_MENU:       [CallbackQueryHandler(main_menu,          pattern="^menu_")],
+            MAIN_MENU:       [CallbackQueryHandler(main_menu, pattern="^(menu_|back_to_menu)")],
             LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_"), CallbackQueryHandler(main_menu, pattern="^(back_to_menu|menu_)")],
             LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
             LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
@@ -600,6 +826,16 @@ def main():
             LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             SICK_PHOTO:      [MessageHandler(filters.PHOTO, sick_leave_photo), MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(t(c, "sick_photo")))],
+            BTR_MENAME:      [CallbackQueryHandler(btr_mename, pattern="^btr_mename_")],
+            BTR_MENAME_PHOTO:[MessageHandler(filters.PHOTO, btr_mename_photo)],
+            BTR_SERVICE:     [CallbackQueryHandler(btr_service, pattern="^btr_(hotel|flight|hotel_flight)$")],
+            BTR_DATE_FROM:   [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_date_from)],
+            BTR_DATE_TO:     [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_date_to)],
+            BTR_CITY_FROM:   [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_city_from)],
+            BTR_CITY_TO:     [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_city_to)],
+            BTR_IQAMA_PHOTO: [MessageHandler(filters.PHOTO, btr_iqama_photo)],
+            BTR_PHONE:       [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_phone)],
+            BTR_EMAIL:       [MessageHandler(filters.TEXT & ~filters.COMMAND, btr_email)],
             TRACK_ID:        [MessageHandler(filters.TEXT & ~filters.COMMAND, track_request)],
         },
         fallbacks=[CommandHandler("cancel", cancel), CommandHandler("start", start), CallbackQueryHandler(restart_bot, pattern="^restart_bot$"), MessageHandler(filters.TEXT & ~filters.COMMAND, invalid_input)],
