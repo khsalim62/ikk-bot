@@ -502,10 +502,10 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
     )
-    ptb_app.add_handler(conv)
-    # handler للرسائل خارج الـ conversation
-    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message))
+    ptb_app.add_handler(conv, group=0)
+    # handler للرسائل خارج الـ conversation - بعد الـ conv عشان ما يتعارضش
     ptb_app.add_handler(CallbackQueryHandler(restart_bot, pattern="^restart_bot$"))
+    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message))
 
     async def run_all():
         # ✅ السيرفر يشتغل أولاً
