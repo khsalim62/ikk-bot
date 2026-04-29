@@ -8,8 +8,38 @@ from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
     Mail, Cc, Attachment, FileContent, FileName,
-    FileType, Disposition
+    FileType, Disposition, HtmlContent, Content
 )
+
+def _get_signature_html() -> tuple:
+    """يرجع HTML signature + الصورة كـ attachment"""
+    logo_path = Path(__file__).parent / "signature_logo.png"
+    logo_b64 = ""
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            logo_b64 = base64.b64encode(f.read()).decode()
+    
+    html = """
+<br><br>
+<hr style="border:none;border-top:1px solid #ccc;margin:20px 0;">
+<p style="color:#1a6ec7;font-weight:bold;font-size:14px;margin:0 0 8px 0;">
+    Regards,<br>CRES Administration Team
+</p>
+<img src="cid:signature_logo" alt="CRES Logo" style="height:60px;">
+"""
+    return html, logo_b64
+
+def _add_signature_attachment(message, logo_b64: str):
+    """يضيف صورة الـ signature كـ inline attachment"""
+    if logo_b64:
+        att = Attachment(
+            FileContent(logo_b64),
+            FileName("signature_logo.png"),
+            FileType("image/png"),
+            Disposition("inline"),
+        )
+        att.content_id = "signature_logo"
+        message.add_attachment(att)
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
@@ -76,11 +106,15 @@ Attached: Signed leave form
 Best regards,
 IKK Group — HR Self-Service System"""
 
+    sig_html, logo_b64 = _get_signature_html()
+    html_body = "<pre style='font-family:Arial,sans-serif;font-size:13px;'>" + body + "</pre>" + sig_html
+
     message = Mail(
         from_email=SMTP_USER,
         to_emails=to_email,
         subject=subject,
         plain_text_content=body,
+        html_content=html_body,
     )
 
     for cc in CC_EMAILS:
@@ -97,6 +131,7 @@ IKK Group — HR Self-Service System"""
         )
         message.add_attachment(attachment)
 
+    _add_signature_attachment(message, logo_b64)
     print(f"📧 Sending via SendGrid to {to_email} + CC")
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
@@ -137,11 +172,15 @@ IKK Group — HR Self-Service System"""
     with open(photo_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
 
+    sig_html, logo_b64 = _get_signature_html()
+    html_body = "<pre style='font-family:Arial,sans-serif;font-size:13px;'>" + body + "</pre>" + sig_html
+
     message = Mail(
         from_email=SMTP_USER,
         to_emails=to_email,
         subject=subject,
         plain_text_content=body,
+        html_content=html_body,
     )
     for cc in CC_EMAILS:
         message.add_cc(Cc(cc))
@@ -152,6 +191,7 @@ IKK Group — HR Self-Service System"""
         FileType("image/jpeg"),
         Disposition("attachment"),
     ))
+    _add_signature_attachment(message, logo_b64)
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
@@ -210,11 +250,15 @@ Attached: MENAME screenshot + Iqama photo
 Best regards,
 IKK Group — HR Self-Service System"""
 
+    sig_html, logo_b64 = _get_signature_html()
+    html_body = "<pre style='font-family:Arial,sans-serif;font-size:13px;'>" + body + "</pre>" + sig_html
+
     message = Mail(
         from_email=SMTP_USER,
         to_emails=to_email,
         subject=subject,
         plain_text_content=body,
+        html_content=html_body,
     )
 
     for cc in BTR_CC:
@@ -228,6 +272,7 @@ IKK Group — HR Self-Service System"""
         data = base64.b64encode(f.read()).decode()
     message.add_attachment(Attachment(FileContent(data), FileName("iqama.jpg"), FileType("image/jpeg"), Disposition("attachment")))
 
+    _add_signature_attachment(message, logo_b64)
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
     print(f"✅ BTR email sent! Status: {response.status_code}")
