@@ -132,7 +132,8 @@ async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, requ
         try:
             send_leave_request(emp, leave_data, pdf_paths, request_id)
             email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
-        except Exception:
+        except Exception as email_err:
+            print(f"❌ Email error: {email_err}")
             email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
 
         if BOT_APP:
