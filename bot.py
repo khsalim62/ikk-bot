@@ -710,7 +710,7 @@ async def show_confirm_cb(q, ctx):
         InlineKeyboardButton(t(ctx, "confirm_no"),  callback_data="confirm_no"),
     ]]
     await q.edit_message_text(
-        t(ctx, "confirm_title") + build_summary(ctx),
+        build_summary(ctx),
         reply_markup=InlineKeyboardMarkup(kb),
         parse_mode="Markdown"
     )
@@ -722,7 +722,7 @@ async def show_confirm_msg(update, ctx):
         InlineKeyboardButton(t(ctx, "confirm_no"),  callback_data="confirm_no"),
     ]]
     await update.message.reply_text(
-        t(ctx, "confirm_title") + build_summary(ctx),
+        build_summary(ctx),
         reply_markup=InlineKeyboardMarkup(kb),
         parse_mode="Markdown"
     )
