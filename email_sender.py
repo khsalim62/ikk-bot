@@ -17,7 +17,9 @@ HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
 HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
 
 CC_EMAILS = [
-       "Khaled.Salim@ikkgroup.com",
+    "syed.moin@ikkgroup.com",
+    "Amr.Hegazy@ikkgroup.com",
+    "Khaled.Salim@ikkgroup.com",
 ]
 
 
@@ -92,3 +94,65 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
     print(f"✅ Email sent! Status: {response.status_code}")
+
+
+def send_sick_leave(emp: dict, leave_data: dict, photo_path: str, request_id: str):
+    """يبعت إيميل إجازة مرضية مع صورة التقرير الطبي"""
+    import base64
+    from pathlib import Path
+
+    emp_name = emp.get("Employee Name Eng", "")
+    emp_id   = emp.get("Employee Code", "")
+
+    region = str(emp.get("Region E", "")).strip().lower()
+    to_email = HR_EMAIL_WESTERN if region == "western" else HR_EMAIL
+
+    subject = f"[إجازة مرضية #{request_id}] {emp_name}"
+
+    body = f"""مرحباً،
+
+تم استلام طلب إجازة مرضية جديد.
+
+بيانات الموظف:
+الاسم: {emp_name}
+الرقم الوظيفي: {emp_id}
+الجنسية: {emp.get('Nationality E', '')}
+الشركة/المنطقة: {emp.get('Business Unit', '')} - {emp.get('Region E', '')}
+
+تفاصيل الإجازة:
+تاريخ الذهاب: {leave_data.get('start_date', '')}
+تاريخ العودة: {leave_data.get('return_date', '')}
+المدة: {leave_data.get('duration', '')} يوم
+
+رقم الطلب: #{request_id}
+
+مرفق: صورة التقرير الطبي
+
+تحياتي،
+نظام إدارة الطلبات — IKK Group"""
+
+    from datetime import datetime
+    with open(photo_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+
+    from sendgrid.helpers.mail import Mail, Cc, Attachment, FileContent, FileName, FileType, Disposition
+    message = Mail(
+        from_email=SMTP_USER,
+        to_emails=to_email,
+        subject=subject,
+        plain_text_content=body,
+    )
+    for cc in CC_EMAILS:
+        message.add_cc(Cc(cc))
+
+    attachment = Attachment(
+        FileContent(data),
+        FileName("medical_report.jpg"),
+        FileType("image/jpeg"),
+        Disposition("attachment"),
+    )
+    message.add_attachment(attachment)
+
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    response = sg.send(message)
+    print(f"✅ Sick leave email sent! Status: {response.status_code}")
