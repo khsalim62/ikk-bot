@@ -17,9 +17,7 @@ HR_EMAIL         = os.getenv("HR_EMAIL", "Yassir.Mohammad@ikkgroup.com")
 HR_EMAIL_WESTERN = "Muhammad.Younis@ikkgroup.com"
 
 CC_EMAILS = [
-    "syed.moin@ikkgroup.com",
-    "Amr.Hegazy@ikkgroup.com",
-    "Khaled.Salim@ikkgroup.com",
+       "Khaled.Salim@ikkgroup.com",
 ]
 
 
