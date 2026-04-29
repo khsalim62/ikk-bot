@@ -61,7 +61,6 @@ TEXTS = {
         "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "back": "🔙 رجوع",
-        "back_main": "🏠 القائمة الرئيسية",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
     },
@@ -94,7 +93,6 @@ TEXTS = {
         "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
         "back": "🔙 Back",
-        "back_main": "🏠 Main Menu",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
     },
@@ -127,7 +125,6 @@ TEXTS = {
         "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "back": "🔙 واپس",
-        "back_main": "🏠 مین مینو",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
     },
@@ -178,7 +175,7 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    if q.data == "back_main":
+    if q.data == "back_to_menu":
         emp = ctx.user_data.get("emp", {})
         lang = ctx.user_data.get("lang", "ar")
         # نحتفظ ببيانات الموظف واللغة فقط
@@ -196,7 +193,7 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
             [InlineKeyboardButton(t(ctx, "leave_sick"),   callback_data="leave_sick")],
             [InlineKeyboardButton(t(ctx, "leave_unpaid"), callback_data="leave_unpaid")],
-            [InlineKeyboardButton(t(ctx, "back"), callback_data="back_main")],
+            [InlineKeyboardButton(t(ctx, "back"), callback_data="back_to_menu")],
         ]
         await q.edit_message_text(t(ctx, "select_leave_type"), reply_markup=InlineKeyboardMarkup(kb))
         return LEAVE_TYPE
@@ -232,13 +229,25 @@ async def leave_return_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         kb = [
             [InlineKeyboardButton(t(ctx, "dest_inside"),  callback_data="dest_inside")],
             [InlineKeyboardButton(t(ctx, "dest_outside"), callback_data="dest_outside")],
-            [InlineKeyboardButton(t(ctx, "back_main"),    callback_data="back_main")],
+            [InlineKeyboardButton(t(ctx, "back"), callback_data="back_to_leave_type")],
         ]
         await update.message.reply_text(t(ctx, "select_dest"), reply_markup=InlineKeyboardMarkup(kb))
         return LEAVE_DEST
     except ValueError:
         await update.message.reply_text(t(ctx, "invalid_date"))
         return LEAVE_RETURN
+
+async def back_to_leave_type_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    kb = [
+        [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
+        [InlineKeyboardButton(t(ctx, "leave_sick"),   callback_data="leave_sick")],
+        [InlineKeyboardButton(t(ctx, "leave_unpaid"), callback_data="leave_unpaid")],
+        [InlineKeyboardButton(t(ctx, "back"), callback_data="back_to_menu")],
+    ]
+    await q.edit_message_text(t(ctx, "select_leave_type"), reply_markup=InlineKeyboardMarkup(kb))
+    return LEAVE_TYPE
 
 async def select_destination(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -411,10 +420,10 @@ def main():
             LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
             IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
             MAIN_MENU:       [CallbackQueryHandler(main_menu,          pattern="^menu_")],
-            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_"), CallbackQueryHandler(main_menu, pattern="^back_main$")],
+            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_"), CallbackQueryHandler(main_menu, pattern="^back_to_menu$")],
             LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
             LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-            LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_"), CallbackQueryHandler(main_menu, pattern="^back_main$")],
+            LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_"), CallbackQueryHandler(main_menu, pattern="^back_to_menu$")],
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
             LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
             LEAVE_PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_phone)],
