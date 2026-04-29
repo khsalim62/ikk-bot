@@ -242,7 +242,19 @@ async def _check_two_years(emp: dict, start_date) -> tuple:
 
 async def leave_start_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
+        from datetime import date as today_date
         start_date = datetime.strptime(update.message.text.strip(), "%Y-%m-%d").date()
+
+        # تحقق إن التاريخ مش في الماضي
+        if start_date < today_date.today():
+            lang = ctx.user_data.get("lang", "ar")
+            msgs = {
+                "ar": "❌ لا يمكن اختيار تاريخ في الماضي. أدخل تاريخاً من اليوم أو بعده:",
+                "en": "❌ Date cannot be in the past. Please enter today or a future date:",
+                "ur": "❌ ماضی کی تاریخ نہیں ہو سکتی۔ آج یا آنے والی تاریخ درج کریں:",
+            }
+            await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+            return LEAVE_START
         emp = ctx.user_data.get("emp", {})
         eligible, hired, eligible_date = await _check_two_years(emp, start_date)
         if not eligible:
