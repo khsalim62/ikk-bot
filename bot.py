@@ -143,12 +143,17 @@ def t(ctx, key, **kw):
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
+    welcome_msg = (
+        "👋 أهلاً بك في الخدمة الذاتية لموظفي CRES\n\n"
+        "من خلال هذا البوت يمكنك إنجاز معاملاتك الوظيفية بسهولة وسرعة في أي وقت.\n\n"
+        "اختر لغتك / Choose your language / اپنی زبان منتخب کریں"
+    )
     kb = [
         [InlineKeyboardButton("🇸🇦 عربي", callback_data="lang_ar")],
         [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
         [InlineKeyboardButton("🇵🇰 اردو", callback_data="lang_ur")],
     ]
-    await update.message.reply_text(TEXTS["ar"]["welcome"], reply_markup=InlineKeyboardMarkup(kb))
+    await update.message.reply_text(welcome_msg, reply_markup=InlineKeyboardMarkup(kb))
     return LANG
 
 async def select_language(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -482,7 +487,7 @@ def main():
     sig_srv.BOT_APP = ptb_app
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start), MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message)],
+        entry_points=[CommandHandler("start", start)],
         states={
             LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
             IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
@@ -504,6 +509,7 @@ def main():
     )
     ptb_app.add_handler(conv, group=0)
     ptb_app.add_handler(CommandHandler("restart", start), group=1)
+    ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_message), group=1)
 
     async def run_all():
         # ✅ السيرفر يشتغل أولاً
