@@ -60,6 +60,8 @@ TEXTS = {
         "decl_text": "📄 نموذج إقرار — سفر خارج المملكة\n\nأنا الموقع أدناه أقر وأتعهد بأنه في حالة حدوث أي تأخير في عودتي من إجازتي بسبب وضع الحرب الحالي، فإنني سأكون مسؤولاً بالكامل عن أي مصاريف تتحملها الشركة. تشمل: تمديد تأشيرة الخروج والعودة، تغيير تذكرة الطيران، تجديد الإقامة، أو أي تكاليف إدارية أخرى. أفوض الشركة بخصم هذه المصاريف من راتبي. تم تقديم هذا الإقرار طواعية وبفهم كامل.",
         "decl_confirm": "✅ تمت القراءة والموافقة على الإقرار",
         "enter_phone": "📱 أدخل رقم موبايلك:",
+        "back": "🔙 رجوع",
+        "back_main": "🏠 القائمة الرئيسية",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
     },
@@ -91,6 +93,8 @@ TEXTS = {
         "decl_text": "📄 Declaration Form — Travel Outside KSA\n\nI hereby declare that in the event of any delay in my return from vacation due to the current war situation or any related circumstances, I shall be fully responsible for any expenses incurred by the Company on my behalf. Such expenses may include: ERE visa extension, air ticket changes, Iqama renewal, or any other administrative costs. I authorize the Company to deduct such expenses from my salary. This declaration is made voluntarily and with full understanding of the above terms.",
         "decl_confirm": "✅ I have read and agree to the declaration",
         "enter_phone": "📱 Enter your mobile number:",
+        "back": "🔙 Back",
+        "back_main": "🏠 Main Menu",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
     },
@@ -122,6 +126,8 @@ TEXTS = {
         "decl_text": "📄 اقرارنامہ — سعودی عرب سے باہر سفر\n\nمیں اعلان کرتا ہوں کہ موجودہ صورتحال کی وجہ سے واپسی میں تاخیر کی صورت میں، میں کمپنی کے تمام اخراجات کا ذمہ دار ہوں گا۔ ان میں ERE ویزا، ہوائی ٹکٹ، اقامہ تجدید شامل ہیں۔ میں کمپنی کو یہ اخراجات تنخواہ سے کاٹنے کا اختیار دیتا ہوں۔ یہ اقرار رضاکارانہ طور پر کیا گیا ہے۔",
         "decl_confirm": "✅ میں نے پڑھ لیا اور اقرار سے متفق ہوں",
         "enter_phone": "📱 موبائل نمبر درج کریں:",
+        "back": "🔙 واپس",
+        "back_main": "🏠 مین مینو",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
     },
@@ -172,11 +178,25 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+    if q.data == "back_main":
+        emp = ctx.user_data.get("emp", {})
+        lang = ctx.user_data.get("lang", "ar")
+        # نحتفظ ببيانات الموظف واللغة فقط
+        ctx.user_data.clear()
+        ctx.user_data["emp"] = emp
+        ctx.user_data["lang"] = lang
+        kb = [
+            [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
+            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+        ]
+        await q.edit_message_text(t(ctx, "welcome_emp", name=emp.get("Employee Name Eng", "")), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
+        return MAIN_MENU
     if q.data == "menu_leave":
         kb = [
             [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
             [InlineKeyboardButton(t(ctx, "leave_sick"),   callback_data="leave_sick")],
             [InlineKeyboardButton(t(ctx, "leave_unpaid"), callback_data="leave_unpaid")],
+            [InlineKeyboardButton(t(ctx, "back"), callback_data="back_main")],
         ]
         await q.edit_message_text(t(ctx, "select_leave_type"), reply_markup=InlineKeyboardMarkup(kb))
         return LEAVE_TYPE
@@ -212,6 +232,7 @@ async def leave_return_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         kb = [
             [InlineKeyboardButton(t(ctx, "dest_inside"),  callback_data="dest_inside")],
             [InlineKeyboardButton(t(ctx, "dest_outside"), callback_data="dest_outside")],
+            [InlineKeyboardButton(t(ctx, "back_main"),    callback_data="back_main")],
         ]
         await update.message.reply_text(t(ctx, "select_dest"), reply_markup=InlineKeyboardMarkup(kb))
         return LEAVE_DEST
@@ -390,10 +411,10 @@ def main():
             LANG:            [CallbackQueryHandler(select_language,   pattern="^lang_")],
             IDENTIFY:        [MessageHandler(filters.TEXT & ~filters.COMMAND, identify_employee)],
             MAIN_MENU:       [CallbackQueryHandler(main_menu,          pattern="^menu_")],
-            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type,  pattern="^leave_")],
+            LEAVE_TYPE:      [CallbackQueryHandler(select_leave_type, pattern="^leave_"), CallbackQueryHandler(main_menu, pattern="^back_main$")],
             LEAVE_START:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_start_date)],
             LEAVE_RETURN:    [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_return_date)],
-            LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_")],
+            LEAVE_DEST:      [CallbackQueryHandler(select_destination, pattern="^dest_"), CallbackQueryHandler(main_menu, pattern="^back_main$")],
             LEAVE_CITY_FROM: [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_city_from)],
             LEAVE_COUNTRY:   [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_country)],
             LEAVE_PHONE:     [MessageHandler(filters.TEXT & ~filters.COMMAND, leave_phone)],
