@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL, SALARY_DOB, FLT_MENAME, FLT_MENAME_PHOTO, FLT_COMPANIONS, FLT_COMPANION_COUNT, FLT_PASSPORT, FLT_COMPANION_PASSPORT, FLT_PHONE, FLT_EMAIL = range(34)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL, SALARY_DOB, FLT_MENAME, FLT_MENAME_PHOTO, FLT_COMPANIONS, FLT_COMPANION_COUNT, FLT_PASSPORT, FLT_COMPANION_PASSPORT, FLT_CITY_FROM, FLT_CITY_TO, FLT_PHONE, FLT_EMAIL = range(36)
 
 EMPLOYEES = {}
 def get_employees():
@@ -72,6 +72,8 @@ TEXTS = {
         "flt_companion_count": "🔢 كم عدد المرافقين؟",
         "flt_passport": "📸 أرسل صورة جواز سفرك:",
         "flt_companion_passport": "📸 أرسل صورة جواز سفر المرافق رقم {num}:",
+        "flt_city_from": "🏙 من أي مدينة ستسافر؟",
+        "flt_city_to": "🏙 إلى أي مدينة؟",
         "flt_phone": "📱 أدخل رقم موبايلك للتواصل:",
         "flt_email": "📧 أدخل بريدك الإلكتروني للتواصل:",
         "flt_done": "✅ تم استلام طلب حجز طيران الإجازة!\n\nرقم الطلب: {req_id}\nسيتم التواصل معك قريباً.",
@@ -147,6 +149,8 @@ TEXTS = {
         "flt_companion_count": "🔢 How many companions?",
         "flt_passport": "📸 Send a photo of your passport:",
         "flt_companion_passport": "📸 Send passport photo of companion #{num}:",
+        "flt_city_from": "🏙 Departing from which city?",
+        "flt_city_to": "🏙 Traveling to which city?",
         "flt_phone": "📱 Enter your mobile number:",
         "flt_email": "📧 Enter your email address:",
         "flt_done": "✅ Your vacation flight request has been received!\n\nRequest ID: {req_id}\nWe will contact you soon.",
@@ -222,6 +226,8 @@ TEXTS = {
         "flt_companion_count": "🔢 کتنے ساتھی ہیں؟",
         "flt_passport": "📸 اپنا پاسپورٹ تصویر بھیجیں:",
         "flt_companion_passport": "📸 ساتھی نمبر {num} کا پاسپورٹ بھیجیں:",
+        "flt_city_from": "🏙 روانگی کا شہر؟",
+        "flt_city_to": "🏙 منزل کا شہر؟",
         "flt_phone": "📱 موبائل نمبر:",
         "flt_email": "📧 ای میل:",
         "flt_done": "✅ چھٹی پرواز کی درخواست موصول!\n\nدرخواست نمبر: {req_id}\nجلد رابطہ کیا جائے گا۔",
@@ -906,8 +912,8 @@ async def flt_passport(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if count > 0:
         await update.message.reply_text(t(ctx, "flt_companion_passport", num=1))
         return FLT_COMPANION_PASSPORT
-    await update.message.reply_text(t(ctx, "flt_phone"))
-    return FLT_PHONE
+    await update.message.reply_text(t(ctx, "flt_city_from"))
+    return FLT_CITY_FROM
 
 async def flt_companion_passport(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not update.message.photo:
@@ -921,6 +927,28 @@ async def flt_companion_passport(update: Update, ctx: ContextTypes.DEFAULT_TYPE)
     if len(passports) < count:
         await update.message.reply_text(t(ctx, "flt_companion_passport", num=len(passports)+1))
         return FLT_COMPANION_PASSPORT
+    await update.message.reply_text(t(ctx, "flt_city_from"))
+    return FLT_CITY_FROM
+
+async def flt_city_from(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    city = update.message.text.strip()
+    if any(char.isdigit() for char in city):
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل اسم المدينة بالحروف فقط:", "en": "❌ Letters only:", "ur": "❌ صرف حروف:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return FLT_CITY_FROM
+    ctx.user_data["flt_city_from"] = city
+    await update.message.reply_text(t(ctx, "flt_city_to"))
+    return FLT_CITY_TO
+
+async def flt_city_to(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    city = update.message.text.strip()
+    if any(char.isdigit() for char in city):
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل اسم المدينة بالحروف فقط:", "en": "❌ Letters only:", "ur": "❌ صرف حروف:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return FLT_CITY_TO
+    ctx.user_data["flt_city_to"] = city
     await update.message.reply_text(t(ctx, "flt_phone"))
     return FLT_PHONE
 
@@ -971,8 +999,10 @@ async def flt_email(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         flt_data = {
             "companion_count": ud.get("flt_companion_count", 0),
-            "phone": ud.get("flt_phone", ""),
-            "email": ud.get("flt_email", ""),
+            "city_from":       ud.get("flt_city_from", ""),
+            "city_to":         ud.get("flt_city_to", ""),
+            "phone":           ud.get("flt_phone", ""),
+            "email":           ud.get("flt_email", ""),
         }
 
         send_flight_request(emp, flt_data, tmp_mename, tmp_passport, tmp_companions, request_id)
@@ -1165,6 +1195,8 @@ def main():
             FLT_COMPANION_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_companion_count)],
             FLT_PASSPORT:        [MessageHandler(filters.PHOTO, flt_passport)],
             FLT_COMPANION_PASSPORT: [MessageHandler(filters.PHOTO, flt_companion_passport)],
+            FLT_CITY_FROM:       [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_city_from)],
+            FLT_CITY_TO:         [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_city_to)],
             FLT_PHONE:           [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_phone)],
             FLT_EMAIL:           [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_email)],
             BTR_MENAME:      [CallbackQueryHandler(btr_mename, pattern="^btr_mename_")],
