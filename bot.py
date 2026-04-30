@@ -84,6 +84,9 @@ TEXTS = {
         "restart": "🔄 بدء من جديد",
         "idle_msg": "👋 اضغط الزرار للبدء:",
         "menu_salary": "💰 كشف الراتب",
+        "menu_balance": "📊 استعلام عن رصيد الإجازات",
+        "balance_msg": "📊 رصيد إجازاتك المتبقي حتى نهاية السنة: *{balance}* يوم",
+        "balance_not_found": "❌ لم يتم العثور على رصيد إجازاتك. تواصل مع HR.",
         "salary_dob": "📅 أدخل تاريخ ميلادك للتحقق (مثال: 1984-10-30):",
         "salary_dob_wrong": "❌ تاريخ الميلاد غير صحيح. حاول مجدداً:",
         "salary_not_found": "❌ لم يتم العثور على كشف راتبك. تواصل مع HR.",
@@ -143,6 +146,9 @@ TEXTS = {
         "restart": "🔄 Start Over",
         "idle_msg": "👋 Press the button to start:",
         "menu_salary": "💰 Salary Slip",
+        "menu_balance": "📊 Leave Balance Inquiry",
+        "balance_msg": "📊 Your remaining leave balance until end of year: *{balance}* days",
+        "balance_not_found": "❌ Leave balance not found. Contact HR.",
         "salary_dob": "📅 Enter your date of birth to verify (e.g. 1984-10-30):",
         "salary_dob_wrong": "❌ Incorrect date of birth. Please try again:",
         "salary_not_found": "❌ Salary slip not found. Contact HR.",
@@ -202,6 +208,9 @@ TEXTS = {
         "restart": "🔄 دوبارہ شروع",
         "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
         "menu_salary": "💰 تنخواہ سلپ",
+        "menu_balance": "📊 چھٹی بیلنس انکوائری",
+        "balance_msg": "📊 سال کے آخر تک آپ کا باقی چھٹی بیلنس: *{balance}* دن",
+        "balance_not_found": "❌ چھٹی بیلنس نہیں ملا۔ HR سے رابطہ کریں۔",
         "salary_dob": "📅 تصدیق کے لیے تاریخ پیدائش (مثال: 1984-10-30):",
         "salary_dob_wrong": "❌ غلط تاریخ پیدائش۔ دوبارہ کوشش کریں:",
         "salary_not_found": "❌ تنخواہ سلپ نہیں ملی۔ HR سے رابطہ کریں۔",
@@ -248,6 +257,7 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         kb = [
             [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
             [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
+            [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
             [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
         ]
     else:
@@ -275,6 +285,7 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             kb = [
                 [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
                 [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
+                [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
                 [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
             ]
         else:
@@ -291,6 +302,17 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ]
         await q.edit_message_text(t(ctx, "btr_mename_q"), reply_markup=InlineKeyboardMarkup(kb))
         return BTR_MENAME
+    if q.data == "menu_balance":
+        emp = ctx.user_data.get("emp", {})
+        balance = str(emp.get("Vacation Balance", "") or "").strip()
+        if not balance or balance == "None":
+            await q.edit_message_text(t(ctx, "balance_not_found"))
+        else:
+            await q.edit_message_text(
+                t(ctx, "balance_msg", balance=balance),
+                parse_mode="Markdown"
+            )
+        return MAIN_MENU
     if q.data == "menu_salary":
         await q.edit_message_text(t(ctx, "salary_dob"))
         return SALARY_DOB
