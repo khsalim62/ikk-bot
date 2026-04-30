@@ -81,7 +81,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Attached: Signed leave form
 
 Best regards,
-CRES - Admin Self-Service System"""
+IKK Group — HR Self-Service System"""
 
     message = Mail(
         from_email=SMTP_USER,
@@ -139,7 +139,7 @@ Request ID:      #{request_id}
 Attached: Medical report photo
 
 Best regards,
-CRES - Admin Self-Service System"""
+IKK Group — HR Self-Service System"""
 
     with open(photo_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
@@ -214,7 +214,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Attached: MENAME screenshot + Iqama photo
 
 Best regards,
-CRES - Admin Self-Service System"""
+IKK Group — HR Self-Service System"""
 
     message = Mail(
         from_email=SMTP_USER,
@@ -237,3 +237,49 @@ CRES - Admin Self-Service System"""
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
     print(f"✅ BTR email sent! Status: {response.status_code}")
+
+
+def send_flight_request(emp: dict, flt_data: dict, mename_photo: str, passport_photo: str, companion_passports: list, request_id: str):
+    from sendgrid.helpers.mail import Mail, Cc, Attachment, FileContent, FileName, FileType, Disposition
+
+    emp_name = emp.get("Employee Name Eng", "")
+    emp_id   = emp.get("Employee Code", "")
+    region   = str(emp.get("Region E", "")).strip().lower()
+    to_email = BTR_EMAIL_WESTERN if region == "western" else BTR_EMAIL
+    companions = flt_data.get("companion_count", 0)
+    comp_str = str(companions) + " companion(s)" if companions > 0 else "Traveling alone"
+    subject = "[Vacation Flight #" + request_id + "] " + emp_name
+
+    body = "Dear Travel Team,\n\nA new Vacation Flight Booking request has been submitted.\n\n"
+    body += "Employee Information:\n"
+    body += "Name:            " + emp_name + "\n"
+    body += "Employee ID:     " + emp_id + "\n"
+    body += "Nationality:     " + emp.get("Nationality E", "") + "\n"
+    body += "Company/Region:  " + emp.get("Business Unit", "") + " - " + emp.get("Region E", "") + "\n\n"
+    body += "Travel Details:\nCompanions:      " + comp_str + "\n\n"
+    body += "Contact Information:\nMobile:          " + flt_data.get("phone", "") + "\n"
+    body += "Email:           " + flt_data.get("email", "") + "\n\n"
+    body += "Request ID:      #" + request_id + "\n"
+    body += "Submitted:       " + datetime.now().strftime("%d/%m/%Y %H:%M") + "\n\n"
+    body += "Attached: MENAME screenshot + Passport photo(s)\n\nBest regards,\nIKK Group — HR Self-Service System"
+
+    message = Mail(from_email=SMTP_USER, to_emails=to_email, subject=subject, plain_text_content=body + SIGNATURE_TEXT)
+    for cc in BTR_CC:
+        message.add_cc(Cc(cc))
+
+    with open(mename_photo, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    message.add_attachment(Attachment(FileContent(data), FileName("mename_leave.jpg"), FileType("image/jpeg"), Disposition("attachment")))
+
+    with open(passport_photo, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    message.add_attachment(Attachment(FileContent(data), FileName("passport_employee.jpg"), FileType("image/jpeg"), Disposition("attachment")))
+
+    for i, cp in enumerate(companion_passports, 1):
+        with open(cp, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        message.add_attachment(Attachment(FileContent(data), FileName("passport_companion_" + str(i) + ".jpg"), FileType("image/jpeg"), Disposition("attachment")))
+
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    response = sg.send(message)
+    print("✅ Flight request email sent! Status: " + str(response.status_code))
