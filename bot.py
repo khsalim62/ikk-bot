@@ -303,13 +303,11 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
             [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
             [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
-            [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
         ]
     else:
         kb = [
             [InlineKeyboardButton(t(ctx, "menu_btr"),    callback_data="menu_btr")],
             [InlineKeyboardButton(t(ctx, "menu_flight"), callback_data="menu_flight")],
-            [InlineKeyboardButton(t(ctx, "menu_track"),  callback_data="menu_track")],
         ]
     await update.message.reply_text(
         t(ctx, "welcome_emp", name=get_display_name(emp)),
@@ -332,13 +330,11 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
                 [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
                 [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
-                [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
             ]
         else:
             kb = [
                 [InlineKeyboardButton(t(ctx, "menu_btr"),    callback_data="menu_btr")],
                 [InlineKeyboardButton(t(ctx, "menu_flight"), callback_data="menu_flight")],
-                [InlineKeyboardButton(t(ctx, "menu_track"),  callback_data="menu_track")],
             ]
         await q.edit_message_text(t(ctx, "welcome_emp", name=emp.get("Employee Name Eng", "")), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
         return MAIN_MENU
