@@ -301,7 +301,6 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if is_labor(emp):
         kb = [
             [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
-            [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
             [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
         ]
     else:
@@ -328,7 +327,6 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if is_labor(emp):
             kb = [
                 [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
-                [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
                 [InlineKeyboardButton(t(ctx, "menu_balance"), callback_data="menu_balance")],
             ]
         else:
