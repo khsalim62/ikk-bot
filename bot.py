@@ -84,7 +84,7 @@ TEXTS = {
         "restart": "🔄 بدء من جديد",
         "idle_msg": "👋 اضغط الزرار للبدء:",
         "menu_salary": "💰 كشف الراتب",
-        "salary_dob": "📅 أدخل تاريخ ميلادك للتحقق (مثال: 30/10/1984):",
+        "salary_dob": "📅 أدخل تاريخ ميلادك للتحقق (مثال: 1984-10-30):",
         "salary_dob_wrong": "❌ تاريخ الميلاد غير صحيح. حاول مجدداً:",
         "salary_not_found": "❌ لم يتم العثور على كشف راتبك. تواصل مع HR.",
         "salary_found": "✅ تم العثور على كشف راتبك:",
@@ -143,7 +143,7 @@ TEXTS = {
         "restart": "🔄 Start Over",
         "idle_msg": "👋 Press the button to start:",
         "menu_salary": "💰 Salary Slip",
-        "salary_dob": "📅 Enter your date of birth to verify (e.g. 30/10/1984):",
+        "salary_dob": "📅 Enter your date of birth to verify (e.g. 1984-10-30):",
         "salary_dob_wrong": "❌ Incorrect date of birth. Please try again:",
         "salary_not_found": "❌ Salary slip not found. Contact HR.",
         "salary_found": "✅ Your salary slip:",
@@ -202,7 +202,7 @@ TEXTS = {
         "restart": "🔄 دوبارہ شروع",
         "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
         "menu_salary": "💰 تنخواہ سلپ",
-        "salary_dob": "📅 تصدیق کے لیے تاریخ پیدائش (مثال: 30/10/1984):",
+        "salary_dob": "📅 تصدیق کے لیے تاریخ پیدائش (مثال: 1984-10-30):",
         "salary_dob_wrong": "❌ غلط تاریخ پیدائش۔ دوبارہ کوشش کریں:",
         "salary_not_found": "❌ تنخواہ سلپ نہیں ملی۔ HR سے رابطہ کریں۔",
         "salary_found": "✅ آپ کی تنخواہ سلپ:",
@@ -700,8 +700,15 @@ async def salary_dob(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # نجيب تاريخ الميلاد من الشيت
     emp_dob = str(emp.get("Date of Birth", "") or emp.get("DOB", "") or emp.get("Birth Date", "") or "").strip()
     
-    # نقارن
-    if not emp_dob or dob_input != emp_dob:
+    # نحول input من YYYY-MM-DD لـ DD/MM/YYYY للمقارنة
+    try:
+        from datetime import datetime
+        dob_converted = datetime.strptime(dob_input, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except ValueError:
+        await update.message.reply_text(t(ctx, "salary_dob_wrong"))
+        return SALARY_DOB
+
+    if not emp_dob or dob_converted != emp_dob:
         await update.message.reply_text(t(ctx, "salary_dob_wrong"))
         return SALARY_DOB
     
