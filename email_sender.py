@@ -15,8 +15,7 @@ SIGNATURE_TEXT = """
 
 --
 Regards,
-CRES Administration Team
-IKK Group"""
+"""
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
@@ -80,8 +79,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
 Attached: Signed leave form
 
-Best regards,
-IKK Group — HR Self-Service System"""
+"""
 
     message = Mail(
         from_email=SMTP_USER,
@@ -213,8 +211,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
 Attached: MENAME screenshot + Iqama photo
 
-Best regards,
-IKK Group — HR Self-Service System"""
+"""
 
     message = Mail(
         from_email=SMTP_USER,
@@ -256,7 +253,7 @@ def send_flight_request(emp: dict, flt_data: dict, mename_photo: str, passport_p
     body += "Employee ID:     " + emp_id + "\n"
     body += "Nationality:     " + emp.get("Nationality E", "") + "\n"
     body += "Company/Region:  " + emp.get("Business Unit", "") + " - " + emp.get("Region E", "") + "\n\n"
-    body += "Travel Details:\nCompanions:      " + comp_str + "\n\n"
+    body += "Travel Details:\nCompanions:      " + comp_str + "\nFrom:            " + flt_data.get("city_from", "") + "\nTo:              " + flt_data.get("city_to", "") + "\n\n"
     body += "Contact Information:\nMobile:          " + flt_data.get("phone", "") + "\n"
     body += "Email:           " + flt_data.get("email", "") + "\n\n"
     body += "Request ID:      #" + request_id + "\n"
