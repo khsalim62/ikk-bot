@@ -1,213 +1,232 @@
-"""
-signature_server.py — سيرفر صغير يعرض صفحة التوقيع ويستقبله
-يشتغل جنب البوت على نفس السيرفر
-"""
-import os
-import base64
-import asyncio
-import uuid
-from pathlib import Path
-from aiohttp import web
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>توقيع الطلب</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f4f8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-size: 20px;
+    color: #1a6ec7;
+    margin-bottom: 6px;
+  }
+  .header .req-id {
+    font-size: 13px;
+    color: #666;
+    direction: ltr;
+  }
+  .info-box {
+    background: #f8faff;
+    border: 1px solid #d0e4ff;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.8;
+  }
+  .info-box span { font-weight: bold; color: #1a6ec7; }
+  .sign-label {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  canvas {
+    border: 2px dashed #1a6ec7;
+    border-radius: 10px;
+    background: #fff;
+    width: 100%;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  button {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  button:active { opacity: 0.8; }
+  .btn-clear {
+    background: #f0f0f0;
+    color: #555;
+  }
+  .btn-submit {
+    background: #1a6ec7;
+    color: white;
+  }
+  .btn-submit:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+    min-height: 24px;
+  }
+  .status.success { color: #27ae60; font-weight: bold; }
+  .status.error   { color: #e74c3c; }
+  .status.loading { color: #888; }
+</style>
+</head>
+<body>
 
-SIGNATURES_DIR = Path(__file__).parent / "signatures"
-SIGNATURES_DIR.mkdir(exist_ok=True)
+<div class="card">
+  <div class="header">
+    <h1>✍️ توقيع الطلب</h1>
+    <div class="req-id" id="reqId"></div>
+  </div>
 
-# dict مؤقت: token → chat_id + request_data
-PENDING_SIGNATURES: dict = {}
+  <div class="info-box">
+    <div>👤 <span id="empName">...</span></div>
+    <div>📋 <span id="reqType">...</span></div>
+  </div>
 
-# الـ bot application (يتسيت من bot.py)
-BOT_APP = None
+  <div class="sign-label">ارسم توقيعك بإصبعك أو الماوس:</div>
+  <canvas id="sigCanvas" height="180"></canvas>
 
+  <div class="btn-row">
+    <button class="btn-clear" onclick="clearCanvas()">🗑 مسح</button>
+    <button class="btn-submit" id="submitBtn" onclick="submitSignature()" disabled>✅ إرسال</button>
+  </div>
 
-def get_base_url() -> str:
-    """رابط السيرفر — يتجيب من الـ Environment"""
-    return os.getenv("BASE_URL", "http://localhost:8080")
+  <div class="status" id="status"></div>
+</div>
 
+<script>
+  // قراءة الـ URL params
+  const params = new URLSearchParams(window.location.search);
+  const token   = params.get('token') || '';
+  const name    = params.get('name')  || '';
+  const reqId   = params.get('req')   || '';
+  const type    = params.get('type')  || '';
 
-def create_signature_token(chat_id: int, emp: dict, leave_data: dict, request_id: str) -> str:
-    """يولد token فريد للتوقيع ويحفظ البيانات"""
-    token = str(uuid.uuid4()).replace("-", "")[:16]
-    PENDING_SIGNATURES[token] = {
-        "chat_id":    chat_id,
-        "emp":        emp,
-        "leave_data": leave_data,
-        "request_id": request_id,
+  const typeMap = {
+    annual: 'إجازة سنوية',
+    sick:   'إجازة مرضية',
+    unpaid: 'إجازة بدون راتب',
+  };
+
+  document.getElementById('empName').textContent = decodeURIComponent(name.replace(/\+/g, ' '));
+  document.getElementById('reqId').textContent   = 'رقم الطلب: ' + reqId;
+  document.getElementById('reqType').textContent = typeMap[type] || type;
+
+  // Canvas setup
+  const canvas = document.getElementById('sigCanvas');
+  const ctx    = canvas.getContext('2d');
+  let drawing  = false;
+  let hasSig   = false;
+
+  function resizeCanvas() {
+    const w = canvas.offsetWidth;
+    canvas.width  = w;
+    canvas.height = 180;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }
+  function draw(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    hasSig = true;
+    document.getElementById('submitBtn').disabled = false;
+  }
+  function endDraw(e) { e.preventDefault(); drawing = false; }
+
+  canvas.addEventListener('mousedown',  startDraw);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove',  draw,      { passive: false });
+  canvas.addEventListener('touchend',   endDraw,   { passive: false });
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasSig = false;
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('status').textContent = '';
+    document.getElementById('status').className = 'status';
+  }
+
+  async function submitSignature() {
+    if (!hasSig) return;
+    const btn = document.getElementById('submitBtn');
+    const sta = document.getElementById('status');
+    btn.disabled = true;
+    sta.textContent = '⏳ جاري الإرسال...';
+    sta.className = 'status loading';
+
+    const sigData = canvas.toDataURL('image/png');
+    try {
+      const res = await fetch('/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, signature: sigData }),
+      });
+      if (res.ok) {
+        sta.textContent = '✅ تم إرسال توقيعك بنجاح! يمكنك إغلاق هذه الصفحة.';
+        sta.className = 'status success';
+        canvas.style.pointerEvents = 'none';
+      } else {
+        throw new Error('Server error ' + res.status);
+      }
+    } catch (err) {
+      sta.textContent = '❌ حدث خطأ. حاول مرة أخرى.';
+      sta.className = 'status error';
+      btn.disabled = false;
     }
-    return token
-
-
-def get_signature_url(token: str, emp_name: str, req_id: str, leave_type: str) -> str:
-    """يرجع الرابط الكامل لصفحة التوقيع"""
-    base = get_base_url()
-    return (
-        f"{base}/sign-page"
-        f"?token={token}"
-        f"&name={emp_name.replace(' ', '+')}"
-        f"&req={req_id}"
-        f"&type={leave_type}"
-    )
-
-
-# ===== Routes =====
-
-async def signature_page(request: web.Request) -> web.Response:
-    """يعرض صفحة HTML للتوقيع"""
-    html_path = Path(__file__).parent / "signature.html"
-    html = html_path.read_text(encoding="utf-8")
-    return web.Response(text=html, content_type="text/html")
-
-
-async def receive_signature(request: web.Request) -> web.Response:
-    """يستقبل التوقيع من الصفحة ويبعته للبوت"""
-    try:
-        data = await request.json()
-        token   = data.get("token", "")
-        sig_b64 = data.get("signature", "")
-
-        pending = PENDING_SIGNATURES.get(token)
-        if not pending:
-            return web.Response(status=404, text="Token not found")
-
-        # حفظ صورة التوقيع
-        sig_data = sig_b64.split(",")[1] if "," in sig_b64 else sig_b64
-        sig_bytes = base64.b64decode(sig_data)
-        sig_path = SIGNATURES_DIR / f"sig_{token}.png"
-        sig_path.write_bytes(sig_bytes)
-
-        # مسح الـ token
-        del PENDING_SIGNATURES[token]
-
-        # ملء الـ PDF وإرسال الإيميل
-        if BOT_APP:
-            chat_id    = pending["chat_id"]
-            request_id = pending["request_id"]
-            emp        = pending["emp"]
-            leave_data = pending["leave_data"]
-
-            asyncio.create_task(
-                process_signed_request(chat_id, emp, leave_data, request_id, str(sig_path))
-            )
-
-        return web.Response(text="OK")
-
-    except Exception as e:
-        return web.Response(status=500, text=str(e))
-
-
-async def health(request: web.Request) -> web.Response:
-    return web.Response(text="OK")
-
-
-async def process_signed_request(chat_id: int, emp: dict, leave_data: dict, request_id: str, sig_path: str):
-    """يملأ الـ PDF ويبعت الإيميل ويبعت رسالة تأكيد للموظف"""
-    import tempfile
-    from pathlib import Path
-    from pdf_filler import fill_leave_form, fill_declaration_form
-    from email_sender import send_leave_request
-    from tracker import save_request
-
-    try:
-        tmp_dir = Path(tempfile.mkdtemp())
-
-        from pdf_filler import add_signature_to_pdf
-
-        # ملء فورم الإجازة + إضافة التوقيع
-        leave_pdf_filled = tmp_dir / f"leave_filled_{request_id}.pdf"
-        fill_leave_form(emp, leave_data, leave_pdf_filled)
-        leave_pdf = tmp_dir / f"leave_{request_id}.pdf"
-        add_signature_to_pdf(leave_pdf_filled, Path(sig_path), leave_pdf)
-        pdf_paths = [leave_pdf]
-
-        # فورم الإقرار لو السفر برة المملكة + إضافة التوقيع
-        if leave_data.get("destination") == "outside":
-            decl_pdf_filled = tmp_dir / f"declaration_filled_{request_id}.pdf"
-            fill_declaration_form(emp, leave_data, decl_pdf_filled)
-            decl_pdf = tmp_dir / f"declaration_{request_id}.pdf"
-            add_signature_to_pdf(decl_pdf_filled, Path(sig_path), decl_pdf, field_id="Signature4")
-            pdf_paths.append(decl_pdf)
-
-        # حفظ الطلب
-        save_request(request_id, emp, leave_data)
-
-        # إرسال الإيميل
-        try:
-            send_leave_request(emp, leave_data, pdf_paths, request_id)
-            email_status = "✅ تم إرسال طلبك لقسم الموارد البشرية"
-        except Exception as e:
-            email_status = "⚠️ تم حفظ طلبك — سيتم إرساله قريباً"
-
-        # رسالة تأكيد للموظف في تيليجرام
-        if BOT_APP:
-            emp_name   = emp.get("Employee Name Eng", "")
-            start_date = leave_data.get("start_date", "")
-            end_date   = leave_data.get("return_date", "")
-            lang       = leave_data.get("lang", "ar")
-            if lang == "en":
-                done_msg = f"Your request has been submitted successfully!\n\nRequest ID: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nKeep your request ID for follow-up."
-            elif lang == "ur":
-                done_msg = f"آپ کی درخواست کامیابی سے جمع ہو گئی!\n\nدرخواست نمبر: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nپیروی کے لیے نمبر محفوظ رکھیں۔"
-            else:
-                done_msg = f"تم تقديم طلبك بنجاح!\n\nرقم الطلب: {request_id}\n{emp_name}\n{start_date} - {end_date}\n\n{email_status}\n\nاحتفظ برقم الطلب للمتابعة"
-            await BOT_APP.bot.send_message(chat_id=chat_id, text=done_msg)
-    except Exception as e:
-        print(f"Error processing request {request_id}: {e}")
-        if BOT_APP:
-            await BOT_APP.bot.send_message(
-                chat_id=chat_id,
-                text=f"⚠️ حدث خطأ في معالجة طلبك. تواصل مع HR مع رقم الطلب: {request_id}"
-            )
-
-
-async def telegram_webhook(request: web.Request) -> web.Response:
-    """يستقبل updates من تيليجرام عبر webhook"""
-    if BOT_APP is None:
-        return web.Response(status=503)
-    try:
-        data = await request.json()
-        from telegram import Update
-        update = Update.de_json(data, BOT_APP.bot)
-        await BOT_APP.process_update(update)
-    except Exception as e:
-        print(f"Webhook error: {e}")
-    return web.Response(text="OK")
-
-
-@web.middleware
-async def cors_middleware(request, handler):
-    if request.method == "OPTIONS":
-        return web.Response(
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            }
-        )
-    response = await handler(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return response
-
-
-def create_app() -> web.Application:
-    app = web.Application(middlewares=[cors_middleware])
-    app.router.add_get("/sign-page", signature_page)
-    app.router.add_post("/sign", receive_signature)
-    app.router.add_options("/sign", lambda r: web.Response(headers={
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    }))
-    app.router.add_get("/health", health)
-    # ✅ الـ telegram webhook مسجل هنا مباشرة
-    app.router.add_post("/telegram", telegram_webhook)
-    return app
-
-
-async def start_server():
-    app = create_app()
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.getenv("PORT", "8080"))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"✅ Signature server running on port {port}")
-    return runner
+  }
+</script>
+</body>
+</html>
