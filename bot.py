@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL, SALARY_DOB = range(26)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL, SALARY_DOB, FLT_MENAME, FLT_MENAME_PHOTO, FLT_COMPANIONS, FLT_COMPANION_COUNT, FLT_PASSPORT, FLT_COMPANION_PASSPORT, FLT_PHONE, FLT_EMAIL = range(34)
 
 EMPLOYEES = {}
 def get_employees():
@@ -62,6 +62,19 @@ TEXTS = {
         "enter_phone": "📱 أدخل رقم موبايلك:",
         "sick_photo": "📸 أرسل صورة واضحة من التقرير الطبي:",
         "sick_done": "✅ تم استلام طلب إجازتك المرضية بنجاح!\n\nرقم الطلب: {req_id}\n{name}\n{start} - {end}\n\nاحتفظ برقم الطلب للمتابعة.",
+        "menu_flight": "✈️ حجز طيران إجازة",
+        "flt_mename_q": "❓ هل تم تقديم طلب إجازتك على نظام MENAME؟",
+        "flt_mename_required": "⚠️ يجب تقديم طلب الإجازة على نظام MENAME أولاً.",
+        "flt_mename_photo": "📸 أرسل صورة من حالة طلبك على MENAME:",
+        "flt_companions_q": "👨‍👩‍👧 هل ستسافر مع مرافقين (زوجة/أبناء تحت كفالتك)؟",
+        "flt_alone": "✈️ لوحدي",
+        "flt_with_companions": "👨‍👩‍👧 مع مرافقين",
+        "flt_companion_count": "🔢 كم عدد المرافقين؟",
+        "flt_passport": "📸 أرسل صورة جواز سفرك:",
+        "flt_companion_passport": "📸 أرسل صورة جواز سفر المرافق رقم {num}:",
+        "flt_phone": "📱 أدخل رقم موبايلك للتواصل:",
+        "flt_email": "📧 أدخل بريدك الإلكتروني للتواصل:",
+        "flt_done": "✅ تم استلام طلب حجز طيران الإجازة!\n\nرقم الطلب: {req_id}\nسيتم التواصل معك قريباً.",
         "menu_btr": "✈️ حجز رحلة عمل (BTR)",
         "btr_mename_q": "❓ هل تم تقديم طلبك على نظام MENAME؟",
         "btr_mename_yes": "✅ نعم، تم التقديم",
@@ -124,6 +137,19 @@ TEXTS = {
         "enter_phone": "📱 Enter your mobile number:",
         "sick_photo": "📸 Please send a clear photo of your medical report:",
         "sick_done": "✅ Your sick leave request has been received!\n\nRequest ID: {req_id}\n{name}\n{start} - {end}\n\nKeep your request ID for follow-up.",
+        "menu_flight": "✈️ Vacation Flight Booking",
+        "flt_mename_q": "❓ Have you submitted your leave request on MENAME System?",
+        "flt_mename_required": "⚠️ You must submit your leave on MENAME first.",
+        "flt_mename_photo": "📸 Send a screenshot of your MENAME leave status:",
+        "flt_companions_q": "👨‍👩‍👧 Will you travel with companions (spouse/children under your sponsorship)?",
+        "flt_alone": "✈️ Alone",
+        "flt_with_companions": "👨‍👩‍👧 With companions",
+        "flt_companion_count": "🔢 How many companions?",
+        "flt_passport": "📸 Send a photo of your passport:",
+        "flt_companion_passport": "📸 Send passport photo of companion #{num}:",
+        "flt_phone": "📱 Enter your mobile number:",
+        "flt_email": "📧 Enter your email address:",
+        "flt_done": "✅ Your vacation flight request has been received!\n\nRequest ID: {req_id}\nWe will contact you soon.",
         "menu_btr": "✈️ Business Trip Request (BTR)",
         "btr_mename_q": "❓ Have you submitted your request on MENAME System?",
         "btr_mename_yes": "✅ Yes, submitted",
@@ -186,6 +212,19 @@ TEXTS = {
         "enter_phone": "📱 موبائل نمبر درج کریں:",
         "sick_photo": "📸 طبی رپورٹ کی واضح تصویر بھیجیں:",
         "sick_done": "✅ آپ کی بیماری چھٹی کی درخواست موصول ہوئی!\n\nدرخواست نمبر: {req_id}\n{name}\n{start} - {end}\n\nپیروی کے لیے نمبر محفوظ رکھیں۔",
+        "menu_flight": "✈️ چھٹی کی پرواز بکنگ",
+        "flt_mename_q": "❓ کیا آپ نے MENAME پر چھٹی کی درخواست دی ہے؟",
+        "flt_mename_required": "⚠️ پہلے MENAME پر چھٹی کی درخواست دیں۔",
+        "flt_mename_photo": "📸 MENAME چھٹی کی تصویر بھیجیں:",
+        "flt_companions_q": "👨‍👩‍👧 کیا آپ کے ساتھ اہل خانہ ہوں گے؟",
+        "flt_alone": "✈️ اکیلے",
+        "flt_with_companions": "👨‍👩‍👧 اہل خانہ کے ساتھ",
+        "flt_companion_count": "🔢 کتنے ساتھی ہیں؟",
+        "flt_passport": "📸 اپنا پاسپورٹ تصویر بھیجیں:",
+        "flt_companion_passport": "📸 ساتھی نمبر {num} کا پاسپورٹ بھیجیں:",
+        "flt_phone": "📱 موبائل نمبر:",
+        "flt_email": "📧 ای میل:",
+        "flt_done": "✅ چھٹی پرواز کی درخواست موصول!\n\nدرخواست نمبر: {req_id}\nجلد رابطہ کیا جائے گا۔",
         "menu_btr": "✈️ کاروباری سفر کی درخواست (BTR)",
         "btr_mename_q": "❓ کیا آپ نے MENAME سسٹم پر درخواست دی ہے؟",
         "btr_mename_yes": "✅ ہاں",
@@ -262,8 +301,9 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ]
     else:
         kb = [
-            [InlineKeyboardButton(t(ctx, "menu_btr"), callback_data="menu_btr")],
-            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+            [InlineKeyboardButton(t(ctx, "menu_btr"),    callback_data="menu_btr")],
+            [InlineKeyboardButton(t(ctx, "menu_flight"), callback_data="menu_flight")],
+            [InlineKeyboardButton(t(ctx, "menu_track"),  callback_data="menu_track")],
         ]
     await update.message.reply_text(
         t(ctx, "welcome_emp", name=get_display_name(emp)),
@@ -290,11 +330,19 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             ]
         else:
             kb = [
-                [InlineKeyboardButton(t(ctx, "menu_btr"), callback_data="menu_btr")],
-                [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+                [InlineKeyboardButton(t(ctx, "menu_btr"),    callback_data="menu_btr")],
+                [InlineKeyboardButton(t(ctx, "menu_flight"), callback_data="menu_flight")],
+                [InlineKeyboardButton(t(ctx, "menu_track"),  callback_data="menu_track")],
             ]
         await q.edit_message_text(t(ctx, "welcome_emp", name=emp.get("Employee Name Eng", "")), reply_markup=InlineKeyboardMarkup(kb), parse_mode="Markdown")
         return MAIN_MENU
+    if q.data == "menu_flight":
+        kb = [
+            [InlineKeyboardButton(t(ctx, "btr_mename_yes"), callback_data="flt_mename_yes")],
+            [InlineKeyboardButton(t(ctx, "btr_mename_no"),  callback_data="flt_mename_no")],
+        ]
+        await q.edit_message_text(t(ctx, "flt_mename_q"), reply_markup=InlineKeyboardMarkup(kb))
+        return FLT_MENAME
     if q.data == "menu_btr":
         kb = [
             [InlineKeyboardButton(t(ctx, "btr_mename_yes"), callback_data="btr_mename_yes")],
@@ -805,6 +853,142 @@ async def salary_dob(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     
     return ConversationHandler.END
 
+async def flt_mename(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    if q.data == "flt_mename_no":
+        await q.edit_message_text(t(ctx, "flt_mename_required"))
+        return ConversationHandler.END
+    await q.edit_message_text(t(ctx, "flt_mename_photo"))
+    return FLT_MENAME_PHOTO
+
+async def flt_mename_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text(t(ctx, "flt_mename_photo"))
+        return FLT_MENAME_PHOTO
+    ctx.user_data["flt_mename_photo"] = update.message.photo[-1].file_id
+    kb = [
+        [InlineKeyboardButton(t(ctx, "flt_alone"),           callback_data="flt_alone")],
+        [InlineKeyboardButton(t(ctx, "flt_with_companions"), callback_data="flt_with_companions")],
+    ]
+    await update.message.reply_text(t(ctx, "flt_companions_q"), reply_markup=InlineKeyboardMarkup(kb))
+    return FLT_COMPANIONS
+
+async def flt_companions(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    if q.data == "flt_alone":
+        ctx.user_data["flt_companion_count"] = 0
+        await q.edit_message_text(t(ctx, "flt_passport"))
+        return FLT_PASSPORT
+    else:
+        await q.edit_message_text(t(ctx, "flt_companion_count"))
+        return FLT_COMPANION_COUNT
+
+async def flt_companion_count(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    if not text.isdigit() or int(text) < 1 or int(text) > 10:
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل رقماً صحيحاً (1-10):", "en": "❌ Enter a valid number (1-10):", "ur": "❌ درست نمبر (1-10):"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return FLT_COMPANION_COUNT
+    ctx.user_data["flt_companion_count"] = int(text)
+    ctx.user_data["flt_companion_passports"] = []
+    await update.message.reply_text(t(ctx, "flt_passport"))
+    return FLT_PASSPORT
+
+async def flt_passport(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text(t(ctx, "flt_passport"))
+        return FLT_PASSPORT
+    ctx.user_data["flt_passport"] = update.message.photo[-1].file_id
+    count = ctx.user_data.get("flt_companion_count", 0)
+    if count > 0:
+        await update.message.reply_text(t(ctx, "flt_companion_passport", num=1))
+        return FLT_COMPANION_PASSPORT
+    await update.message.reply_text(t(ctx, "flt_phone"))
+    return FLT_PHONE
+
+async def flt_companion_passport(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        passports = ctx.user_data.get("flt_companion_passports", [])
+        await update.message.reply_text(t(ctx, "flt_companion_passport", num=len(passports)+1))
+        return FLT_COMPANION_PASSPORT
+    passports = ctx.user_data.get("flt_companion_passports", [])
+    passports.append(update.message.photo[-1].file_id)
+    ctx.user_data["flt_companion_passports"] = passports
+    count = ctx.user_data.get("flt_companion_count", 0)
+    if len(passports) < count:
+        await update.message.reply_text(t(ctx, "flt_companion_passport", num=len(passports)+1))
+        return FLT_COMPANION_PASSPORT
+    await update.message.reply_text(t(ctx, "flt_phone"))
+    return FLT_PHONE
+
+async def flt_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    phone = update.message.text.strip()
+    if not phone.isdigit() or len(phone) < 10:
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل رقم موبايل صحيح (10 أرقام على الأقل):", "en": "❌ Enter valid mobile (min 10 digits):", "ur": "❌ درست نمبر:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return FLT_PHONE
+    ctx.user_data["flt_phone"] = phone
+    await update.message.reply_text(t(ctx, "flt_email"))
+    return FLT_EMAIL
+
+async def flt_email(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    email = update.message.text.strip()
+    if "@" not in email or "." not in email:
+        lang = ctx.user_data.get("lang", "ar")
+        msgs = {"ar": "❌ أدخل بريد إلكتروني صحيح:", "en": "❌ Enter valid email:", "ur": "❌ درست ای میل:"}
+        await update.message.reply_text(msgs.get(lang, msgs["ar"]))
+        return FLT_EMAIL
+    ctx.user_data["flt_email"] = email
+
+    ud = ctx.user_data
+    emp = ud.get("emp", {})
+    request_id = generate_request_id().replace("LV-", "FLT-")
+
+    try:
+        from email_sender import send_flight_request
+        import tempfile, os
+
+        bot = ctx.bot
+        tmp_mename   = tempfile.mktemp(suffix=".jpg")
+        tmp_passport = tempfile.mktemp(suffix=".jpg")
+
+        mename_file = await bot.get_file(ud["flt_mename_photo"])
+        await mename_file.download_to_drive(tmp_mename)
+
+        passport_file = await bot.get_file(ud["flt_passport"])
+        await passport_file.download_to_drive(tmp_passport)
+
+        tmp_companions = []
+        for fid in ud.get("flt_companion_passports", []):
+            tmp = tempfile.mktemp(suffix=".jpg")
+            f = await bot.get_file(fid)
+            await f.download_to_drive(tmp)
+            tmp_companions.append(tmp)
+
+        flt_data = {
+            "companion_count": ud.get("flt_companion_count", 0),
+            "phone": ud.get("flt_phone", ""),
+            "email": ud.get("flt_email", ""),
+        }
+
+        send_flight_request(emp, flt_data, tmp_mename, tmp_passport, tmp_companions, request_id)
+
+        for tmp in [tmp_mename, tmp_passport] + tmp_companions:
+            try: os.unlink(tmp)
+            except: pass
+
+        status = t(ctx, "flt_done", req_id=request_id)
+    except Exception as e:
+        print(f"Flight email error: {e}")
+        status = "⚠️ " + ("تم حفظ طلبك — سيتم إرساله قريباً" if ud.get("lang") == "ar" else "Request saved — will be sent soon")
+
+    await update.message.reply_text(status)
+    return ConversationHandler.END
+
 def build_summary(ctx):
     ud   = ctx.user_data
     emp  = ud.get("emp", {})
@@ -975,6 +1159,14 @@ def main():
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             SICK_PHOTO:      [MessageHandler(filters.PHOTO, sick_leave_photo), MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(t(c, "sick_photo")))],
             SALARY_DOB:      [MessageHandler(filters.TEXT & ~filters.COMMAND, salary_dob)],
+            FLT_MENAME:          [CallbackQueryHandler(flt_mename, pattern="^flt_mename_")],
+            FLT_MENAME_PHOTO:    [MessageHandler(filters.PHOTO, flt_mename_photo)],
+            FLT_COMPANIONS:      [CallbackQueryHandler(flt_companions, pattern="^flt_(alone|with_companions)$")],
+            FLT_COMPANION_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_companion_count)],
+            FLT_PASSPORT:        [MessageHandler(filters.PHOTO, flt_passport)],
+            FLT_COMPANION_PASSPORT: [MessageHandler(filters.PHOTO, flt_companion_passport)],
+            FLT_PHONE:           [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_phone)],
+            FLT_EMAIL:           [MessageHandler(filters.TEXT & ~filters.COMMAND, flt_email)],
             BTR_MENAME:      [CallbackQueryHandler(btr_mename, pattern="^btr_mename_")],
             BTR_MENAME_PHOTO:[MessageHandler(filters.PHOTO, btr_mename_photo)],
             BTR_SERVICE:     [CallbackQueryHandler(btr_service, pattern="^btr_(hotel|flight|hotel_flight)$")],
