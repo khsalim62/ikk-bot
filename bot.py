@@ -714,17 +714,19 @@ async def salary_dob(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     
     # نبحث عن صفحة الموظف في الـ PDF
     emp_code = emp.get("Employee Code", "").strip()
-    salary_pdf = Path(__file__).parent / "salary" / "CRES.pdf"
-    
-    if not salary_pdf.exists():
-        await update.message.reply_text(t(ctx, "salary_not_found"))
-        return ConversationHandler.END
+    SALARY_PDF_URL = "https://drive.google.com/uc?export=download&id=1ysRx0f71AXtX2zr--IuH7eRSN4oRZ1zT"
     
     try:
         from pypdf import PdfReader, PdfWriter
         import tempfile
-        
-        reader = PdfReader(str(salary_pdf))
+        import httpx
+        import io
+
+        # تحميل الـ PDF من Google Drive
+        await update.message.reply_text("⏳ جاري التحقق...")
+        response = httpx.get(SALARY_PDF_URL, follow_redirects=True, timeout=30)
+        pdf_bytes = io.BytesIO(response.content)
+        reader = PdfReader(pdf_bytes)
         page_num = -1
         
         for i, page in enumerate(reader.pages):
