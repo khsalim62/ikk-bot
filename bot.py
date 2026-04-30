@@ -724,8 +724,29 @@ async def salary_dob(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         # تحميل الـ PDF من Google Drive
         await update.message.reply_text("⏳ جاري التحقق...")
-        response = httpx.get(SALARY_PDF_URL, follow_redirects=True, timeout=30)
-        pdf_bytes = io.BytesIO(response.content)
+        
+        # Google Drive large file download with confirmation
+        file_id = "1ysRx0f71AXtX2zr--IuH7eRSN4oRZ1zT"
+        session = httpx.Client(follow_redirects=True, timeout=60)
+        
+        # أول request عشان نجيب الـ confirmation token
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        resp = session.get(url)
+        
+        # لو فيه confirmation page
+        if "confirm=" in resp.text or "download_warning" in resp.text:
+            import re
+            confirm = re.search(r'confirm=([^&"]+)', resp.text)
+            if confirm:
+                url2 = f"https://drive.google.com/uc?export=download&confirm={confirm.group(1)}&id={file_id}"
+                resp = session.get(url2)
+        
+        # لو مش PDF جرب الـ usercontent URL
+        if resp.headers.get("content-type", "").startswith("text/"):
+            url3 = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0&confirm=t"
+            resp = session.get(url3)
+        
+        pdf_bytes = io.BytesIO(resp.content)
         reader = PdfReader(pdf_bytes)
         page_num = -1
         
