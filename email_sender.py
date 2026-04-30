@@ -13,9 +13,8 @@ from sendgrid.helpers.mail import (
 
 SIGNATURE_TEXT = """
 
---
 Regards,
-"""
+CRES Administration Team"""
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 SMTP_USER        = os.getenv("SMTP_USER", "cres.hr1@gmail.com")
@@ -54,31 +53,36 @@ def send_leave_request(emp: dict, leave_data: dict, pdf_paths: list[Path], reque
     if leave_data.get("destination") == "outside":
         dest += f" — {leave_data.get('city_from', '')} -> {leave_data.get('country_to', '')}"
 
-    subject = f"[Leave Request #{request_id}] {emp_name} — {leave_type}"
+    subject = f"Leave Request - {emp_id} — {leave_type}"
 
     body = f"""Dear HR Team,
 
 A new leave request has been submitted via the self-service bot.
 
-Employee Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMPLOYEE INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name:            {emp_name}
 Employee ID:     {emp_id}
 Position:        {emp_pos}
 Nationality:     {emp.get('Nationality E', '')}
 Company/Region:  {emp.get('Business Unit', '')} - {emp.get('Region E', '')}
 
-Leave Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAVE DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Leave Type:      {leave_type}
 Start Date:      {leave_data.get('start_date', '')}
 Return Date:     {leave_data.get('return_date', '')}
 Duration:        {leave_data.get('duration', '')} days
 Destination:     {dest}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Request ID:      #{request_id}
 Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Attached: Signed leave form
-
 """
 
     message = Mail(
@@ -115,29 +119,33 @@ def send_sick_leave(emp: dict, leave_data: dict, photo_path: str, request_id: st
     region = str(emp.get("Region E", "")).strip().lower()
     to_email = HR_EMAIL_WESTERN if region == "western" else HR_EMAIL
 
-    subject = f"[Sick Leave #{request_id}] {emp_name}"
+    subject = f"Sick Leave - {emp_id}"
 
     body = f"""Dear HR Team,
 
 A new sick leave request has been submitted.
 
-Employee Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMPLOYEE INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name:            {emp_name}
 Employee ID:     {emp_id}
 Nationality:     {emp.get('Nationality E', '')}
 Company/Region:  {emp.get('Business Unit', '')} - {emp.get('Region E', '')}
 
-Leave Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAVE DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Start Date:      {leave_data.get('start_date', '')}
 Return Date:     {leave_data.get('return_date', '')}
 Duration:        {leave_data.get('duration', '')} days
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Request ID:      #{request_id}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Attached: Medical report photo
-
-Best regards,
-IKK Group — HR Self-Service System"""
+"""
 
     with open(photo_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
@@ -183,34 +191,41 @@ def send_btr_request(emp: dict, btr_data: dict, mename_photo: str, iqama_photo: 
     to_email = BTR_EMAIL_WESTERN if region == "western" else BTR_EMAIL
     print(f"📧 BTR Region: {region} → TO: {to_email}")
 
-    subject = f"[BTR #{request_id}] {emp_name} — {service}"
+    subject = f"BTR - {emp_id} — {service}"
 
     body = f"""Dear Travel Team,
 
 A new Business Trip Request has been submitted via the self-service bot.
 
-Employee Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMPLOYEE INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name:            {emp_name}
 Employee ID:     {emp_id}
 Nationality:     {emp.get('Nationality E', '')}
 Company/Region:  {emp.get('Business Unit', '')} - {emp.get('Region E', '')}
 
-Trip Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRIP DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Booking Type:    {service}
 Travel Date:     {btr_data.get('date_from', '')}
 Return Date:     {btr_data.get('date_to', '')}
 From:            {btr_data.get('city_from', '')}
 To:              {btr_data.get('city_to', '')}
 
-Contact Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Mobile:          {btr_data.get('phone', '')}
 Email:           {btr_data.get('email', '')}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Request ID:      #{request_id}
 Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Attached: MENAME screenshot + Iqama photo
-
 """
 
     message = Mail(
@@ -245,20 +260,51 @@ def send_flight_request(emp: dict, flt_data: dict, mename_photo: str, passport_p
     to_email = BTR_EMAIL_WESTERN if region == "western" else BTR_EMAIL
     companions = flt_data.get("companion_count", 0)
     comp_str = str(companions) + " companion(s)" if companions > 0 else "Traveling alone"
-    subject = "[Vacation Flight #" + request_id + "] " + emp_name
+    subject = "Vacation Flight - " + emp_id
 
-    body = "Dear Travel Team,\n\nA new Vacation Flight Booking request has been submitted.\n\n"
-    body += "Employee Information:\n"
-    body += "Name:            " + emp_name + "\n"
-    body += "Employee ID:     " + emp_id + "\n"
-    body += "Nationality:     " + emp.get("Nationality E", "") + "\n"
-    body += "Company/Region:  " + emp.get("Business Unit", "") + " - " + emp.get("Region E", "") + "\n\n"
-    body += "Travel Details:\nCompanions:      " + comp_str + "\nFrom:            " + flt_data.get("city_from", "") + "\nTo:              " + flt_data.get("city_to", "") + "\n\n"
-    body += "Contact Information:\nMobile:          " + flt_data.get("phone", "") + "\n"
-    body += "Email:           " + flt_data.get("email", "") + "\n\n"
-    body += "Request ID:      #" + request_id + "\n"
-    body += "Submitted:       " + datetime.now().strftime("%d/%m/%Y %H:%M") + "\n\n"
-    body += "Attached: MENAME screenshot + Passport photo(s)\n\nBest regards,\nIKK Group — HR Self-Service System"
+    body = """Dear Travel Team,
+
+A new Vacation Flight Booking request has been submitted.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMPLOYEE INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name:            {emp_name}
+Employee ID:     {emp_id}
+Nationality:     {nationality}
+Company/Region:  {company}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRAVEL DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+From:            {city_from}
+To:              {city_to}
+Companions:      {comp_str}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mobile:          {phone}
+Email:           {email}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Request ID:      #{request_id}
+Submitted:       {date}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Attached: MENAME screenshot + Passport photo(s)
+""".format(
+        emp_name=emp_name, emp_id=emp_id,
+        nationality=emp.get("Nationality E", ""),
+        company=emp.get("Business Unit", "") + " - " + emp.get("Region E", ""),
+        city_from=flt_data.get("city_from", ""),
+        city_to=flt_data.get("city_to", ""),
+        comp_str=comp_str,
+        phone=flt_data.get("phone", ""),
+        email=flt_data.get("email", ""),
+        request_id=request_id,
+        date=datetime.now().strftime("%d/%m/%Y %H:%M"),
+    )
 
     message = Mail(from_email=SMTP_USER, to_emails=to_email, subject=subject, plain_text_content=body + SIGNATURE_TEXT)
     for cc in BTR_CC:
