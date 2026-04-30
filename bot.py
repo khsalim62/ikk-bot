@@ -22,7 +22,7 @@ import signature_server as sig_srv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL = range(25)
+LANG, IDENTIFY, MAIN_MENU, LEAVE_TYPE, LEAVE_START, LEAVE_RETURN, LEAVE_DEST, LEAVE_CITY_FROM, LEAVE_COUNTRY, LEAVE_PHONE, LEAVE_CONFIRM, LEAVE_DECLARATION, SIGNATURE, TRACK_ID, SICK_PHOTO, BTR_MENAME, BTR_MENAME_PHOTO, BTR_SERVICE, BTR_DATE_FROM, BTR_DATE_TO, BTR_CITY_FROM, BTR_CITY_TO, BTR_IQAMA_PHOTO, BTR_PHONE, BTR_EMAIL, SALARY_DOB = range(26)
 
 EMPLOYEES = {}
 def get_employees():
@@ -83,6 +83,11 @@ TEXTS = {
         "back": "🔙 رجوع",
         "restart": "🔄 بدء من جديد",
         "idle_msg": "👋 اضغط الزرار للبدء:",
+        "menu_salary": "💰 كشف الراتب",
+        "salary_dob": "📅 أدخل تاريخ ميلادك للتحقق (مثال: 30/10/1984):",
+        "salary_dob_wrong": "❌ تاريخ الميلاد غير صحيح. حاول مجدداً:",
+        "salary_not_found": "❌ لم يتم العثور على كشف راتبك. تواصل مع HR.",
+        "salary_found": "✅ تم العثور على كشف راتبك:",
         "enter_track_id": "🔍 أدخل رقم الطلب:",
         "track_not_found": "❌ رقم الطلب غير موجود.",
     },
@@ -137,6 +142,11 @@ TEXTS = {
         "back": "🔙 Back",
         "restart": "🔄 Start Over",
         "idle_msg": "👋 Press the button to start:",
+        "menu_salary": "💰 Salary Slip",
+        "salary_dob": "📅 Enter your date of birth to verify (e.g. 30/10/1984):",
+        "salary_dob_wrong": "❌ Incorrect date of birth. Please try again:",
+        "salary_not_found": "❌ Salary slip not found. Contact HR.",
+        "salary_found": "✅ Your salary slip:",
         "enter_track_id": "🔍 Enter request ID:",
         "track_not_found": "❌ Request ID not found.",
     },
@@ -191,6 +201,11 @@ TEXTS = {
         "back": "🔙 واپس",
         "restart": "🔄 دوبارہ شروع",
         "idle_msg": "👋 شروع کرنے کے لیے بٹن دبائیں:",
+        "menu_salary": "💰 تنخواہ سلپ",
+        "salary_dob": "📅 تصدیق کے لیے تاریخ پیدائش (مثال: 30/10/1984):",
+        "salary_dob_wrong": "❌ غلط تاریخ پیدائش۔ دوبارہ کوشش کریں:",
+        "salary_not_found": "❌ تنخواہ سلپ نہیں ملی۔ HR سے رابطہ کریں۔",
+        "salary_found": "✅ آپ کی تنخواہ سلپ:",
         "enter_track_id": "🔍 درخواست نمبر:",
         "track_not_found": "❌ نہیں ملا۔",
     },
@@ -231,8 +246,9 @@ async def identify_employee(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data["emp"] = {k: str(v) if v is not None else "" for k, v in emp.items()}
     if is_labor(emp):
         kb = [
-            [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
-            [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+            [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
+            [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
+            [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
         ]
     else:
         kb = [
@@ -257,8 +273,9 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ctx.user_data["lang"] = lang
         if is_labor(emp):
             kb = [
-                [InlineKeyboardButton(t(ctx, "menu_leave"), callback_data="menu_leave")],
-                [InlineKeyboardButton(t(ctx, "menu_track"), callback_data="menu_track")],
+                [InlineKeyboardButton(t(ctx, "menu_leave"),   callback_data="menu_leave")],
+                [InlineKeyboardButton(t(ctx, "menu_salary"),  callback_data="menu_salary")],
+                [InlineKeyboardButton(t(ctx, "menu_track"),   callback_data="menu_track")],
             ]
         else:
             kb = [
@@ -274,6 +291,9 @@ async def main_menu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         ]
         await q.edit_message_text(t(ctx, "btr_mename_q"), reply_markup=InlineKeyboardMarkup(kb))
         return BTR_MENAME
+    if q.data == "menu_salary":
+        await q.edit_message_text(t(ctx, "salary_dob"))
+        return SALARY_DOB
     if q.data == "menu_leave":
         kb = [
             [InlineKeyboardButton(t(ctx, "leave_annual"), callback_data="leave_annual")],
@@ -672,6 +692,67 @@ async def btr_email(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg)
     return ConversationHandler.END
 
+async def salary_dob(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """يتحقق من تاريخ الميلاد ويبعت كشف الراتب"""
+    dob_input = update.message.text.strip()
+    emp = ctx.user_data.get("emp", {})
+    
+    # نجيب تاريخ الميلاد من الشيت
+    emp_dob = str(emp.get("Date of Birth", "") or emp.get("DOB", "") or emp.get("Birth Date", "") or "").strip()
+    
+    # نقارن
+    if not emp_dob or dob_input != emp_dob:
+        await update.message.reply_text(t(ctx, "salary_dob_wrong"))
+        return SALARY_DOB
+    
+    # نبحث عن صفحة الموظف في الـ PDF
+    emp_code = emp.get("Employee Code", "").strip()
+    salary_pdf = Path(__file__).parent / "salary" / "CRES.pdf"
+    
+    if not salary_pdf.exists():
+        await update.message.reply_text(t(ctx, "salary_not_found"))
+        return ConversationHandler.END
+    
+    try:
+        from pypdf import PdfReader, PdfWriter
+        import tempfile
+        
+        reader = PdfReader(str(salary_pdf))
+        page_num = -1
+        
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            if emp_code.lower() in text.lower():
+                page_num = i
+                break
+        
+        if page_num == -1:
+            await update.message.reply_text(t(ctx, "salary_not_found"))
+            return ConversationHandler.END
+        
+        # نعمل PDF بصفحة واحدة
+        writer = PdfWriter()
+        writer.add_page(reader.pages[page_num])
+        
+        tmp = tempfile.mktemp(suffix=".pdf")
+        with open(tmp, "wb") as f:
+            writer.write(f)
+        
+        await update.message.reply_text(t(ctx, "salary_found"))
+        with open(tmp, "rb") as f:
+            await update.message.reply_document(
+                document=f,
+                filename=f"salary_{emp_code}.pdf"
+            )
+        import os
+        os.unlink(tmp)
+        
+    except Exception as e:
+        print(f"Salary error: {e}")
+        await update.message.reply_text(t(ctx, "salary_not_found"))
+    
+    return ConversationHandler.END
+
 def build_summary(ctx):
     ud   = ctx.user_data
     emp  = ud.get("emp", {})
@@ -841,6 +922,7 @@ def main():
             LEAVE_CONFIRM:   [CallbackQueryHandler(confirm_leave,      pattern="^confirm_")],
             SIGNATURE:       [MessageHandler(filters.PHOTO,            receive_signature)],
             SICK_PHOTO:      [MessageHandler(filters.PHOTO, sick_leave_photo), MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(t(c, "sick_photo")))],
+            SALARY_DOB:      [MessageHandler(filters.TEXT & ~filters.COMMAND, salary_dob)],
             BTR_MENAME:      [CallbackQueryHandler(btr_mename, pattern="^btr_mename_")],
             BTR_MENAME_PHOTO:[MessageHandler(filters.PHOTO, btr_mename_photo)],
             BTR_SERVICE:     [CallbackQueryHandler(btr_service, pattern="^btr_(hotel|flight|hotel_flight)$")],
