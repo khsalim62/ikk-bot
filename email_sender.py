@@ -104,7 +104,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Attached: Signed leave form
 
 Best regards,
-IKK Group — HR Self-Service System"""
+CRES — HR Self-Service System"""
 
     sig_html, logo_b64 = _get_signature_html()
     html_body = "<pre style='font-family:Arial,sans-serif;font-size:13px;'>" + body + "</pre>" + sig_html
@@ -167,7 +167,7 @@ Request ID:      #{request_id}
 Attached: Medical report photo
 
 Best regards,
-IKK Group — HR Self-Service System"""
+CRES — HR Self-Service System"""
 
     with open(photo_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
@@ -248,7 +248,7 @@ Submitted:       {datetime.now().strftime('%d/%m/%Y %H:%M')}
 Attached: MENAME screenshot + Iqama photo
 
 Best regards,
-IKK Group — HR Self-Service System"""
+CRES — HR Self-Service System"""
 
     sig_html, logo_b64 = _get_signature_html()
     html_body = "<pre style='font-family:Arial,sans-serif;font-size:13px;'>" + body + "</pre>" + sig_html
